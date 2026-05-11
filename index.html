@@ -535,6 +535,7 @@
             <button type="button" onclick="selecionarSolicitante('KALINE Diretoria')"   class="sol-btn" id="sol-KALINE">🗣️ Kaline<br><span style="font-size:9px;opacity:0.7">Diretoria</span></button>
             <button type="button" onclick="selecionarSolicitante('CARIN Diretoria')"    class="sol-btn" id="sol-CARIN">🗣️ Carin<br><span style="font-size:9px;opacity:0.7">Diretoria</span></button>
             <button type="button" onclick="selecionarSolicitante('POLO CHAPECÓ')"       class="sol-btn" id="sol-POLO">🏠 Polo<br><span style="font-size:9px;opacity:0.7">Chapecó</span></button>
+            <button type="button" onclick="selecionarSolicitante('Financeiro OPAY')"    class="sol-btn" id="sol-FINANCEIRO">💰 Financeiro<br><span style="font-size:9px;opacity:0.7">OPAY</span></button>
           </div>
         </div>
         <div style="grid-column:1/-1">
@@ -1775,7 +1776,7 @@ function selecionarSolicitante(nome){
   const e=EMPRESAS[empresaAtual];
   const ids={'LUCAS Suport':'sol-LUCAS','THAY Suport':'sol-THAY','PEDRO Suport':'sol-PEDRO',
     'VIC Marketing':'sol-VICTORIA','ISABELLA Diretoria':'sol-ISABELLA',
-    'KALINE Diretoria':'sol-KALINE','CARIN Diretoria':'sol-CARIN','POLO CHAPECÓ':'sol-POLO'};
+    'KALINE Diretoria':'sol-KALINE','CARIN Diretoria':'sol-CARIN','POLO CHAPECÓ':'sol-POLO','Financeiro OPAY':'sol-FINANCEIRO'};
   document.querySelectorAll('.sol-btn').forEach(b=>{
     const sel=b.id===ids[nome];
     b.classList.toggle('selected',sel);
