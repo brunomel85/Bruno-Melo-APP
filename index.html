@@ -2324,9 +2324,14 @@ function salvarCompra(){
     const d=new Date(anoInicio,mesInicio+i,1);
     parcelas.push({mes:MESES[d.getMonth()],ano:d.getFullYear(),valor:valorParc,num:i+1});
   }
-  const compra={id:Date.now(),desc,valor,nParcelas,cartaoId,pagamento:compPagAtual,dataCompra,parcelas,categoria:catCompraAtual};
-  const compras=getCompras();
-  compras.push(compra);
+  const compra={id:editandoCompraId||Date.now(),desc,valor,nParcelas,cartaoId,pagamento:compPagAtual,dataCompra,parcelas,categoria:catCompraAtual};
+  let compras=getCompras();
+  if(editandoCompraId){
+    // Substitui a compra existente
+    compras=compras.map(c=>c.id===editandoCompraId?compra:c);
+  } else {
+    compras.push(compra);
+  }
   salvarCompras(compras);
   document.getElementById('df-comp-desc').value='';
   document.getElementById('df-comp-valor').value='';
@@ -2609,6 +2614,13 @@ function renderFixas(){
 }
 
 // PAINEL DE FELIPPE
+
+function toggleCartoesPainel(){
+  const el = document.getElementById('cartoes-painel-lista');
+  if(!el) return;
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
 function renderDFPainel(){
   const e=EMPRESAS[0];
   const mesAtual=MESES[new Date().getMonth()];
@@ -2695,24 +2707,24 @@ function renderDFPainel(){
       let proxVenc=new Date(anoHoje, mesHoje, diaVenc);
       if(proxVenc<=hoje) proxVenc=new Date(anoHoje, mesHoje+1, diaVenc);
       const diff=Math.ceil((proxVenc-hoje)/(1000*60*60*24));
-      if(diff<=3){ diasVenc=`⚠️ ${diff}d`; corVenc='#EF4444'; }
-      else if(diff<=7){ diasVenc=`${diff}d`; corVenc='#F59E0B'; }
+      if(diff<=7){ diasVenc=`${diff}d`; corVenc='#EF4444'; }
+      else if(diff<=15){ diasVenc=`${diff}d`; corVenc='#F59E0B'; }
       else { diasVenc=`${diff}d`; corVenc='#10B981'; }
     }
     // Limite disponível
     const totalComp=getCompras().filter(p=>p.cartaoId===c.id).reduce((a,p)=>a+p.parcelas.reduce((b,parc)=>{
       const pg=(p.parcelasPagas||[]).includes(parc.num); return b+(pg?0:parc.valor);},0),0);
     const dispLimite=c.limite>0?Math.max(0,c.limite-totalComp):null;
-    return `<div style="background:#F5F0FF;border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:8px">
-      <div style="width:10px;height:10px;border-radius:50%;background:${c.cor};flex-shrink:0"></div>
-      <div style="flex:1">
-        <div style="font-size:11px;font-weight:600;color:#1A0A2E">${c.nome}</div>
-        ${diasVenc?`<div style="font-size:10px;font-weight:700;color:${corVenc}">vence em ${diasVenc}</div>`:''}
-        ${dispLimite!==null?`<div style="font-size:10px;font-weight:700;color:#10B981">${fmtReal(dispLimite)}</div>`:''}
+    return `<div style="background:#F5F0FF;border-radius:12px;padding:10px 12px">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+        <div style="width:8px;height:8px;border-radius:50%;background:${c.cor};flex-shrink:0"></div>
+        <div style="font-size:12px;font-weight:700;color:#1A0A2E;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.nome}</div>
+        <div style="font-size:14px;font-weight:800;color:${c.cor};flex-shrink:0">${fmtReal(c.gasto)}</div>
       </div>
-      <div style="text-align:right">
-        <div style="font-size:10px;font-weight:700;color:#aaa">${pct}%</div>
-        <div style="font-weight:800;color:${c.cor};font-size:13px">${fmtReal(c.gasto)}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding-left:14px">
+        ${diasVenc?`<div style="font-size:10px;font-weight:700;color:${corVenc}">${diasVenc}</div>`:'<div></div>'}
+        ${dispLimite!==null?`<div style="font-size:10px;font-weight:700;color:#10B981">${fmtReal(dispLimite)}</div>`:'<div></div>'}
+        <div style="font-size:10px;color:#aaa;font-weight:700">${pct}%</div>
       </div>
     </div>`;
   }).join('');
@@ -2720,6 +2732,32 @@ function renderDFPainel(){
   const pctFixas=totalGeral>0?Math.round((totalFixas/totalGeral)*100):0;
 
   document.getElementById('painel-stats').innerHTML=`
+    <!-- CARDS RESUMO RÁPIDO -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+      <div style="background:#fff;border-radius:14px;padding:14px;border:1.5px solid #EDE9FE;box-shadow:0 2px 8px rgba(109,40,217,0.07)">
+        <div style="font-size:10px;font-weight:700;color:#aaa;margin-bottom:4px">💸 DESPESAS GERAL</div>
+        <div style="font-size:18px;font-weight:800;color:#EF4444">${fmtReal(totalGeral)}</div>
+        <div style="font-size:10px;color:#bbb;margin-top:2px">${mesFiltro}</div>
+      </div>
+      <div onclick="toggleCartoesPainel()" style="background:#fff;border-radius:14px;padding:14px;border:1.5px solid #EDE9FE;box-shadow:0 2px 8px rgba(109,40,217,0.07);cursor:pointer">
+        <div style="font-size:10px;font-weight:700;color:#aaa;margin-bottom:4px">💳 CARTÕES DO MÊS</div>
+        <div style="font-size:18px;font-weight:800;color:${e.primary}">${fmtReal(totalCartoes)}</div>
+        <div style="font-size:10px;color:#bbb;margin-top:2px">toque para ver detalhes ▾</div>
+      </div>
+    </div>
+
+    <!-- CARTÕES EXPANDIDOS -->
+    <div id="cartoes-painel-lista" style="display:none;background:#fff;border-radius:14px;padding:14px;margin-bottom:12px;border:1.5px solid #EDE9FE">
+      <div style="font-size:12px;font-weight:700;color:#555;margin-bottom:10px">💳 Cartões — ${mesFiltro}</div>
+      ${gastosPorCartao.map(c=>`
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f5f5f5">
+          <div style="width:10px;height:10px;border-radius:50%;background:${c.cor};flex-shrink:0"></div>
+          <div style="flex:1;font-size:13px;font-weight:600">${c.nome}</div>
+          <div style="font-size:13px;font-weight:800;color:${c.cor}">${fmtReal(c.gasto)}</div>
+        </div>`).join('')}
+      ${totalCartoes===0?'<div style="text-align:center;opacity:0.4;font-size:13px">Nenhum gasto este mês</div>':''}
+    </div>
+
     <div class="card" style="padding:20px;margin-bottom:12px">
       <div style="display:flex;flex-direction:column;align-items:center;gap:18px">
 
