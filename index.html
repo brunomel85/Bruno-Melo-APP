@@ -2406,7 +2406,12 @@ function renderCompras(){
   let compras=getCompras();
   if(filtroMes!=='Todos') compras=compras.filter(c=>c.parcelas.some(p=>p.mes===filtroMes));
   if(filtroCartao!=='Todos') compras=compras.filter(c=>c.cartaoId==filtroCartao);
-  compras=[...compras].sort((a,b)=>b.dataCompra.localeCompare(a.dataCompra));
+  compras=[...compras].sort((a,b)=>{
+    const da=a.dataCompra||'0000-00-00';
+    const db=b.dataCompra||'0000-00-00';
+    if(db!==da) return db.localeCompare(da);
+    return b.id-a.id;
+  });
   if(compras.length===0){document.getElementById('lista-df-compras').innerHTML='<div class="empty">Nenhuma compra lançada ainda.</div>';return;}
   const e=EMPRESAS[0];
   document.getElementById('lista-df-compras').innerHTML=compras.map(c=>{
@@ -2626,22 +2631,24 @@ function renderDFPainel(){
   const mesAtual=MESES[new Date().getMonth()];
   const mesSel=document.getElementById('painel-mes')?.value||'Todos';
   const mesFiltro=mesSel==='Todos'?mesAtual:mesSel;
+
   const cartoes=getCartoes();
   const compras=getCompras();
   const fixas=getFixas();
   const rendas=getRendas();
-  const mesAnoAtual=`${MESES[new Date().getMonth()]}/${new Date().getFullYear()}`;
+  const mesAnoAtual=`${mesFiltro}/${new Date().getFullYear()}`;
   const fixasAtivas=fixas.filter(f=>!f.temporaria||(f.mesesAtivos&&f.mesesAtivos.includes(mesAnoAtual)));
 
-  // Gasto por cartão no mês
+  // Gasto por cartão no mês filtrado — busca parcelas de qualquer ano com esse mês
   const gastosPorCartao=cartoes.map(c=>{
     const gasto=compras.reduce((a,comp)=>{
       if(comp.cartaoId!==c.id) return a;
-      const parc=comp.parcelas.find(x=>x.mes===mesFiltro);
-      if(!parc) return a;
-      // Se esta parcela está paga, não conta no limite usado
-      const pago=(comp.parcelasPagas||[]).includes(parc.num);
-      return a+(pago?0:parc.valor);
+      // Busca todas as parcelas desse mês (qualquer ano)
+      const parcs=comp.parcelas.filter(x=>x.mes===mesFiltro);
+      return a+parcs.reduce((b,parc)=>{
+        const pago=(comp.parcelasPagas||[]).includes(parc.num);
+        return b+(pago?0:parc.valor);
+      },0);
     },0);
     return {...c, gasto};
   });
