@@ -3347,8 +3347,6 @@ function renderDFPainel(){
         </div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:center;gap:18px">
-
-        <!-- DONUT POR CARTÃO -->
         <div style="position:relative;width:${SIZE}px;height:${SIZE}px">
           <svg width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}" style="transform:rotate(-90deg)">
             <circle cx="${SIZE/2}" cy="${SIZE/2}" r="${R}" fill="none" stroke="#EDE9FE" stroke-width="22"/>
@@ -3393,6 +3391,7 @@ function renderDFPainel(){
           <div style="font-size:11px;color:${saldoPositivo?'#15803D':'#991B1B'};font-weight:600;margin-bottom:4px">${saldoPositivo?'✅ Sobra':'❌ Falta'}</div>
           <div style="font-size:14px;font-weight:800;color:${saldoPositivo?'#10B981':'#EF4444'}">${fmtReal(Math.abs(saldo))}</div>
         </div>
+      </div>
       </div>
       <!-- Barra de progresso -->
       <div style="height:8px;background:#F0F0F0;border-radius:4px;overflow:hidden">
