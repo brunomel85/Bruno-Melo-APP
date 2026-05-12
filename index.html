@@ -595,10 +595,14 @@
           <label class="form-label">Local</label>
           <input class="form-input" id="d-local" placeholder="" />
         </div>
-        <div>
+        <div style="grid-column:1/-1">
           <label class="form-label">Data</label>
-          <input class="form-input" type="date" id="d-data" />
+          <div style="display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:10px;border:1.5px solid #E5E7EB;background:#fff;margin-bottom:12px">
+            <span style="font-size:14px">📅</span>
+            <input type="date" id="d-data" style="border:none;outline:none;font-size:13px;background:transparent"/>
+          </div>
         </div>
+        <div style="grid-column:1/-1">
           <label class="form-label">Tipo de Serviço</label>
           <select class="form-input" id="d-prazo" onchange="toggleModeloDemanda()">
             <option value="Entrega de Maquininha">📦 Entrega de Maquininha</option>
@@ -968,28 +972,10 @@ function getDemandas(idx){ return ls('log_dem_'+idx, getDemoDem(idx)); }
 function salvarDemandas(idx,d){ lsSet('log_dem_'+idx,d); }
 
 function getDemoRegs(idx){
-  const d=[[
-    {id:1,tipo:"Entrega de Maquininha",local:"Mercado São João",data:"2026-05-02",mes:"Maio",responsavel:"Carlos Silva",modelo:"POS Smart",qtdBobinas:"2",observacoes:"Cliente novo"},
-    {id:2,tipo:"Entrega de Bobina",local:"Farmácia Central",data:"2026-05-05",mes:"Maio",responsavel:"Ana Paula",modelo:"",qtdBobinas:"10",observacoes:""},
-    {id:3,tipo:"Retirada/Devolução",local:"Bar do Zé",data:"2026-04-15",mes:"Abril",responsavel:"Marina",modelo:"Pinpad USB",qtdBobinas:"",observacoes:"Contrato encerrado"},
-  ],[
-    {id:1,tipo:"Troca de Maquininha",local:"Padaria Estrela",data:"2026-05-06",mes:"Maio",responsavel:"João Lima",modelo:"POS Mini",qtdBobinas:"3",observacoes:"Máquina com defeito"},
-    {id:2,tipo:"Entrega de Maquininha",local:"Loja Chic",data:"2026-05-03",mes:"Maio",responsavel:"Pedro Alves",modelo:"POS Pro",qtdBobinas:"5",observacoes:""},
-  ],[
-    {id:1,tipo:"Entrega de Bobina",local:"Posto Shell",data:"2026-05-07",mes:"Maio",responsavel:"Lucas",modelo:"",qtdBobinas:"8",observacoes:""},
-  ]];
-  return d[idx]||[];
+  return [];
 }
 function getDemoDem(idx){
-  const d=[[
-    {id:1,titulo:"Entregar máquinas no centro",desc:"5 máquinas POS Smart pendentes",prazo:"2026-05-12",prioridade:"Alta",status:"Pendente"},
-    {id:2,titulo:"Repor estoque de bobinas",desc:"Mínimo 50 unidades",prazo:"2026-05-15",prioridade:"Média",status:"Em andamento"},
-  ],[
-    {id:1,titulo:"Visitar clientes inadimplentes",desc:"3 clientes com débito",prazo:"2026-05-10",prioridade:"Alta",status:"Pendente"},
-  ],[
-    {id:1,titulo:"Atualizar relatório mensal",desc:"Enviar para o gestor",prazo:"2026-05-31",prioridade:"Baixa",status:"Pendente"},
-  ]];
-  return d[idx]||[];
+  return [];
 }
 
 // =====================
@@ -1787,7 +1773,11 @@ function renderDemandas(){
   document.getElementById('demandas-sub').style.color=e.textSub;
   document.getElementById('d-btn-salvar').style.background=`linear-gradient(135deg,${e.primary},${e.primaryDark})`;
   const lista=filtro==='Todos'?demandas:demandas.filter(d=>d.status===filtro);
-  const sorted=[...lista].sort((a,b)=>b.id-a.id);
+  const sorted=[...lista].sort((a,b)=>{
+    const da=a.dataCriacao||'0000-00-00';
+    const db=b.dataCriacao||'0000-00-00';
+    return db.localeCompare(da);
+  });
   if(sorted.length===0){
     document.getElementById('lista-demandas').innerHTML='<div class="empty">Nenhuma demanda encontrada.</div>';
     return;
@@ -1812,6 +1802,7 @@ function renderDemandas(){
               ${d.prazo?`<span>${getCores(d.prazo)?.icon||'📋'} ${d.prazo}</span>`:''}${d.dataCriacao?`<span style="opacity:0.5">·</span><span>📅 ${fmtData(d.dataCriacao)}</span>`:''}
               ${d.solicitante?`<span style="opacity:0.5">·</span><span>👤 ${d.solicitante}</span>`:''}
             </div>
+            ${d.correios&&d.correiosCliente?`<div style="font-size:11px;opacity:0.75;display:flex;gap:4px;align-items:center"><span>📮 Correios</span><span style="opacity:0.5">·</span><span style="font-weight:600">${d.correiosCliente}</span></div>`:''}
             ${(d.qtd||d.modelo||d.adquirente||d.comBobinas)?`<div style="font-size:11px;opacity:0.65;display:flex;gap:4px;flex-wrap:wrap;align-items:center">
               ${d.qtd?`<span>📦 ${d.qtd}</span>`:''}
               ${d.modelo?`${d.qtd?'<span style=opacity:0.4>·</span>':''}<span>🖥️ ${d.modelo}</span>`:''}
