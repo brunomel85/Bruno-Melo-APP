@@ -2406,12 +2406,7 @@ function renderCompras(){
   let compras=getCompras();
   if(filtroMes!=='Todos') compras=compras.filter(c=>c.parcelas.some(p=>p.mes===filtroMes));
   if(filtroCartao!=='Todos') compras=compras.filter(c=>c.cartaoId==filtroCartao);
-  compras=[...compras].sort((a,b)=>{
-    const da=a.dataCompra||'0000-00-00';
-    const db=b.dataCompra||'0000-00-00';
-    if(db!==da) return db.localeCompare(da);
-    return b.id-a.id;
-  });
+  compras=[...compras].sort((a,b)=>b.id-a.id);
   if(compras.length===0){document.getElementById('lista-df-compras').innerHTML='<div class="empty">Nenhuma compra lançada ainda.</div>';return;}
   const e=EMPRESAS[0];
   document.getElementById('lista-df-compras').innerHTML=compras.map(c=>{
