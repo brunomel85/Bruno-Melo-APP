@@ -561,6 +561,7 @@
       </select>
     </div>
 
+    <input class="filter-input" id="busca-demandas" placeholder="🔍 Buscar demanda..." oninput="renderDemandas()" style="width:100%;margin-bottom:10px"/>
     <button onclick="toggleDemandaForm()" id="btn-nova-demanda" style="width:100%;padding:13px;border-radius:14px;border:2px dashed #F97316;background:#FFF7ED;color:#F97316;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:12px">➕ Nova Demanda</button>
 
     <!-- Form nova demanda -->
@@ -673,6 +674,8 @@
           <div id="d-correios-wrap" style="display:none;margin-top:8px">
             <label class="form-label">NOME DO CLIENTE (CORREIOS)</label>
             <input class="form-input" id="d-correios-cliente" placeholder="Nome do destinatário..."/>
+            <label class="form-label">DESTINO</label>
+            <input class="form-input" id="d-correios-destino" placeholder="Ex: São Paulo - SP"/>
           </div>
         </div>
         <div style="grid-column:1/-1">
@@ -1546,19 +1549,21 @@ function renderPainel(){
     ?'<div style="padding:20px;text-align:center;opacity:0.45;font-size:13px">Nenhum registro ainda.</div>'
     :recentes.map(r=>{
       const{bg,icon}=getCores(r.tipo)||{bg:e.primary,icon:'📋'};
+      const diasSemana=['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
+      const diaSemana=r.data?diasSemana[new Date(r.data+'T12:00:00').getDay()]:'';
       return `<div class="recent-item" style="align-items:flex-start">
         <div class="item-icon" style="background:${bg}22;flex-shrink:0">${icon}</div>
         <div style="flex:1">
-          <div style="font-weight:700;font-size:13px">${r.responsavel||r.local}</div>
-          <div style="font-size:11px;opacity:0.55;margin-top:2px">${r.tipo} · ${fmtData(r.data)}</div>
-          ${(r.modelo||r.adquirente||r.qtd||r.qtdBobinas)?`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px">
-            ${r.modelo?`<span style="background:${bg}15;color:${bg};border-radius:5px;padding:1px 5px;font-size:9px;font-weight:700">🖥️ ${r.modelo}</span>`:''}
-            ${r.adquirente?`<span style="background:${bg}15;color:${bg};border-radius:5px;padding:1px 5px;font-size:9px;font-weight:700">🏦 ${r.adquirente}</span>`:''}
-            ${r.qtd?`<span style="background:${bg}15;color:${bg};border-radius:5px;padding:1px 5px;font-size:9px;font-weight:700">📦 ${r.qtd}</span>`:''}
-            ${r.qtdBobinas?`<span style="background:#3B82F615;color:#3B82F6;border-radius:5px;padding:1px 5px;font-size:9px;font-weight:700">🧻 ${r.qtdBobinas}bob</span>`:''}
+          <div style="font-weight:700;font-size:14px;color:#1A1A2E">${r.tipo}</div>
+          <div style="font-size:11px;opacity:0.55;margin-top:2px">${fmtData(r.data)}${diaSemana?' · '+diaSemana:''}</div>
+          ${(r.qtd||r.modelo||r.adquirente||r.qtdBobinas)?`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:5px">
+            ${r.qtd?`<span style="background:${bg}15;color:${bg};border-radius:5px;padding:2px 6px;font-size:10px;font-weight:700">📦 ${r.qtd}</span>`:''}
+            ${r.modelo?`<span style="background:${bg}15;color:${bg};border-radius:5px;padding:2px 6px;font-size:10px;font-weight:700">🖥️ ${r.modelo}</span>`:''}
+            ${r.adquirente?`<span style="background:${bg}15;color:${bg};border-radius:5px;padding:2px 6px;font-size:10px;font-weight:700">🏦 ${r.adquirente}</span>`:''}
+            ${r.qtdBobinas?`<span style="background:#3B82F615;color:#3B82F6;border-radius:5px;padding:2px 6px;font-size:10px;font-weight:700">🧻 ${r.qtdBobinas}</span>`:''}
           </div>`:''}
+          <div style="font-size:11px;opacity:0.55;margin-top:4px">${r.local?`📍 ${r.local}`:''}${r.local&&r.responsavel?' · ':''}${r.responsavel?`👷 ${r.responsavel}`:''}</div>
         </div>
-        <div class="badge" style="color:${bg};background:${bg}18;flex-shrink:0">${r.tipo.split(' ')[0]}</div>
       </div>`;
     }).join('');
   document.getElementById('link-todos').style.color=e.accent;
@@ -1627,8 +1632,14 @@ function renderRota(){
 
   if(paradas.length===0) return;
 
-  const paradasOrdenadas=[...paradas].sort((a,b)=>b.id-a.id);
+  const paradasOrdenadas=[...paradas].sort((a,b)=>{
+    const ordem={Pendente:0,'Em andamento':1,Concluído:2,Cancelado:3};
+    const oa=ordem[a.status]??0; const ob=ordem[b.status]??0;
+    return oa!==ob?oa-ob:a.id-b.id;
+  });
+  const primeiraConc = paradasOrdenadas.findIndex(p=>p.status==='Concluído'||p.concluido);
   document.getElementById('lista-rota').innerHTML=paradasOrdenadas.map((p,i)=>{
+    const sep=(i===primeiraConc&&primeiraConc>0)?'<div style="display:flex;align-items:center;gap:8px;margin:10px 0"><div style="flex:1;height:1px;background:#eee"></div><span style="font-size:10px;color:#aaa;font-weight:700">✅ Concluídas</span><div style="flex:1;height:1px;background:#eee"></div></div>':'';
     const{bg,icon}=getCores(p.tipo)||{bg:e.primary,icon:'📍'};
     const status=p.status||'Pendente';
     const CORES_ST={'Pendente':'#F59E0B','Em andamento':'#3B82F6','Concluído':'#10B981','Cancelado':'#EF4444'};
@@ -1636,12 +1647,12 @@ function renderRota(){
     const corSt=CORES_ST[status]||'#aaa';
     const bgSt=BGS_ST[status]||'#f0f0f0';
     const corBarra=status==='Concluído'?'#10B981':status==='Em andamento'?'#3B82F6':status==='Pendente'?'#F59E0B':status==='Cancelado'?'#EF4444':'#1A1A2E';
-    return `<div class="rota-item ${status==='Concluído'?'rota-concluido':''}" style="border-left:3px solid ${corBarra}">
+    return sep+`<div class="rota-item ${status==='Concluído'?'rota-concluido':''}" style="border-left:3px solid ${corBarra}">
       <div class="rota-ordem" style="background:${corBarra}">${status==='Concluído'?'✓':i+1}</div>
       <div class="rota-body">
         <div class="rota-cliente">${p.cliente}</div>
         <div class="rota-local">📍 ${p.local}</div>
-        <div class="rota-tipo" style="color:${bg}">${icon} ${p.tipo}${p.qtd?' · Qtd: '+p.qtd:''}</div>
+        <div class="rota-tipo" style="color:${bg}">${icon} ${p.tipo}${p.qtd?' · Qtd: '+p.qtd:''}${p.qtdBobinas?' · 🧻 '+p.qtdBobinas:''}</div>
         ${p.obs?`<div style="font-size:11px;opacity:0.55;margin-top:3px">💬 ${p.obs}</div>`:''}
         <div style="display:flex;gap:5px;margin-top:8px;flex-wrap:wrap">
           <button onclick="mudarStatusRota('${sel}',${p.id},'Em andamento')" style="padding:4px 9px;border-radius:7px;border:1px solid ${CORES_ST['Em andamento']};background:${status==='Em andamento'?BGS_ST['Em andamento']:'transparent'};color:${CORES_ST['Em andamento']};font-size:10px;font-weight:700;cursor:pointer">🔄 Andamento</button>
@@ -1790,7 +1801,9 @@ function renderDemandas(){
     const data=document.getElementById('rota-data-sel')?.value||todayStr();
     const paradas=getRota(empresaAtual,data);
     const naRota=paradas.some(p=>p.demandaId===d.id);
-    const demBorderColor=d.status==='Concluída'?'#10B981':d.status==='Cancelada'?'#EF4444':open?p.dot:'rgba(0,0,0,0.08)';
+    const demBorderColor=d.status==='Concluída'?'#10B981':d.status==='Cancelada'?'#EF4444':d.status==='Em andamento'?'#3B82F6':'rgba(0,0,0,0.08)';
+    const demBg=d.status==='Concluída'?'#DCFCE7':d.status==='Cancelada'?'#FEE2E2':d.status==='Em andamento'?'#DBEAFE':d.status==='Pendente'?'#FEF9C3':'#fff';
+    const demTextColor=d.status==='Concluída'?'#166534':d.status==='Cancelada'?'#991B1B':d.status==='Em andamento'?'#1E40AF':d.status==='Pendente'?'#92400E':'#1A1A2E';
     const demBorderWidth=(d.status==='Concluída'||d.status==='Cancelada')?'2px':'1px';
     return `<div class="demanda-card" style="border-color:${demBorderColor};border-width:${demBorderWidth};border-left:4px solid ${demBorderColor};opacity:${concluida?0.75:1}" onclick="toggleDem(${d.id})">
       <div class="demanda-header">
@@ -1802,7 +1815,15 @@ function renderDemandas(){
               ${d.prazo?`<span>${getCores(d.prazo)?.icon||'📋'} ${d.prazo}</span>`:''}${d.dataCriacao?`<span style="opacity:0.5">·</span><span>📅 ${fmtData(d.dataCriacao)}</span>`:''}
               ${d.solicitante?`<span style="opacity:0.5">·</span><span>👤 ${d.solicitante}</span>`:''}
             </div>
+            ${(d.qtd||d.modelo||d.adquirente||d.qtdBobinas)?`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:5px">
+              ${d.qtd?`<span style="background:${p.dot}15;color:${p.dot};border-radius:5px;padding:2px 6px;font-size:10px;font-weight:700">📦 ${d.qtd}</span>`:''}
+              ${d.modelo?`<span style="background:${p.dot}15;color:${p.dot};border-radius:5px;padding:2px 6px;font-size:10px;font-weight:700">🖥️ ${d.modelo}</span>`:''}
+              ${d.adquirente?`<span style="background:${p.dot}15;color:${p.dot};border-radius:5px;padding:2px 6px;font-size:10px;font-weight:700">🏦 ${d.adquirente}</span>`:''}
+              ${d.qtdBobinas?`<span style="background:#3B82F615;color:#3B82F6;border-radius:5px;padding:2px 6px;font-size:10px;font-weight:700">🧻 ${d.qtdBobinas}</span>`:''}
+            </div>`:''}
+            ${d.desc?`<div style="font-size:11px;opacity:0.6;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">📝 ${d.desc}</div>`:''}
             ${d.correios&&d.correiosCliente?`<div style="font-size:11px;opacity:0.75;display:flex;gap:4px;align-items:center"><span>📮 Correios</span><span style="opacity:0.5">·</span><span style="font-weight:600">${d.correiosCliente}</span></div>`:''}
+            ${d.correios&&d.correiosDestino?`<div style="font-size:11px;opacity:0.75;display:flex;gap:4px;align-items:center"><span>📍 Destino</span><span style="opacity:0.5">·</span><span style="font-weight:600">${d.correiosDestino}</span></div>`:''}
             ${(d.qtd||d.modelo||d.adquirente||d.comBobinas)?`<div style="font-size:11px;opacity:0.65;display:flex;gap:4px;flex-wrap:wrap;align-items:center">
               ${d.qtd?`<span>📦 ${d.qtd}</span>`:''}
               ${d.modelo?`${d.qtd?'<span style=opacity:0.4>·</span>':''}<span>🖥️ ${d.modelo}</span>`:''}
@@ -1873,6 +1894,16 @@ function adicionarDemandaNaRota(id){
 }
 
 
+
+function irParaDemanda(id){
+  navTo('demandas');
+  detalheDemAberto = id;
+  renderDemandas();
+  setTimeout(()=>{
+    const el = document.getElementById('dem-card-'+id);
+    if(el) el.scrollIntoView({behavior:'smooth', block:'center'});
+  }, 100);
+}
 function toggleDemandaForm(){
   const form = document.getElementById('demanda-form-card');
   const btn = document.getElementById('btn-nova-demanda');
@@ -2132,6 +2163,7 @@ function salvarDemanda(){
     dataCriacao:document.getElementById('d-data')?.value||dataAtual,
     correios:correiosAtivo,
     correiosCliente:correiosAtivo?(document.getElementById('d-correios-cliente')?.value.trim()||''):'',
+    correiosDestino:correiosAtivo?(document.getElementById('d-correios-destino')?.value.trim()||''):'',
   };
   demandas=editandoDemId?demandas.map(d=>d.id===editandoDemId?dem:d):[...demandas,dem];
   salvarDemandas(empresaAtual,demandas);
@@ -2159,6 +2191,7 @@ function cancelarDemanda(){
   correiosAtivo=false;
   const check=document.getElementById('d-correios-check'); if(check){check.textContent='';check.style.borderColor='#ccc';check.style.background='transparent';}
   const wrap=document.getElementById('d-correios-wrap'); if(wrap) wrap.style.display='none';
+  const dcd=document.getElementById('d-correios-destino'); if(dcd) dcd.value='';
   const btn=document.getElementById('d-correios-toggle'); if(btn){btn.style.borderColor='rgba(0,0,0,0.1)';btn.style.background='#fff';btn.style.color='#555';}
   document.getElementById('d-outros-wrap').style.display='none';
   editandoDemId=null;
@@ -2243,7 +2276,7 @@ function renderRegistros(){
             ${r.qtd?`<span style="background:${bg}15;color:${bg};border-radius:5px;padding:2px 6px;font-size:10px;font-weight:700">📦 ${r.qtd}</span>`:''}
             ${r.modelo?`<span style="background:${bg}15;color:${bg};border-radius:5px;padding:2px 6px;font-size:10px;font-weight:700">🖥️ ${r.modelo}</span>`:''}
             ${r.adquirente?`<span style="background:${bg}15;color:${bg};border-radius:5px;padding:2px 6px;font-size:10px;font-weight:700">🏦 ${r.adquirente}</span>`:''}
-            ${r.qtdBobinas?`<span style="background:#3B82F615;color:#3B82F6;border-radius:5px;padding:2px 6px;font-size:10px;font-weight:700">🧻 ${r.qtdBobinas}bob</span>`:''}
+            ${r.qtdBobinas?`<span style="background:#3B82F615;color:#3B82F6;border-radius:5px;padding:2px 6px;font-size:10px;font-weight:700">🧻 ${r.qtdBobinas}</span>`:''}
           </div>`:''}
           <!-- Linha 4: local · responsável -->
           <div style="font-size:11px;opacity:0.55;margin-top:4px">${r.local?`📍 ${r.local}`:''}${r.local&&r.responsavel?' · ':''}${r.responsavel?`👷 ${r.responsavel}`:''}</div>
@@ -2546,7 +2579,7 @@ function renderCartoes(){
               <div style="font-size:10px;opacity:0.45">${parc?parc.num+'/'+p.nParcelas+' parcela':''}</div>
             </div>
             <div style="font-size:13px;font-weight:700;color:${pago?'#10B981':c.cor};${pago?'text-decoration:line-through':''}">${fmtReal(parc?parc.valor:0)}</div>
-            <button onclick="toggleParcelaPaga(${p.id},${parc?parc.num:0});event.stopPropagation()" style="width:26px;height:26px;border-radius:50%;border:2px solid #10B981;background:${pago?'#10B981':'transparent'};display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-size:13px;transition:all 0.2s">${pago?'✅':''}</button>
+            <button onclick="toggleParcelaPaga(${p.id},${parc?parc.num:0},this,'${c.cor}');event.stopPropagation()" style="width:26px;height:26px;border-radius:50%;border:2px solid #10B981;background:${pago?'#10B981':'transparent'};display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-size:13px;transition:all 0.2s">${pago?'✅':''}</button>
           </div>`;
         }).join('')}
         ${comprasMes.length>0?``:''}
@@ -2570,7 +2603,7 @@ function renderCartoes(){
       <div style="height:8px;background:#f0f0f0;border-radius:4px"><div style="height:100%;width:${pctUsado}%;background:${corBarra};border-radius:4px;transition:width 0.4s"></div></div>
       <div style="display:flex;justify-content:space-between;margin-top:5px">
         <div style="font-size:10px;opacity:0.5">${pctUsado}% comprometido · ${fmtReal(totalComprometido)}</div>
-        <div style="font-size:11px;font-weight:700;color:${limiteDisp<c.limite*0.2?'#EF4444':'#10B981'}">💳 Disponível: ${fmtReal(limiteDisp)}</div>
+        <div style="font-size:11px;font-weight:700;color:#10B981">💳 ${fmtReal(limiteDisp)}</div>
       </div>`:''}
       ${listaCompras}
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:12px" onclick="event.stopPropagation()">
@@ -2667,7 +2700,7 @@ function excluirCompra(id){
   renderCompras(); renderDFPainel();
 }
 
-function toggleParcelaPaga(compId, numParcela){
+function toggleParcelaPaga(compId, numParcela, btnEl, cor){
   const compras = getCompras();
   const comp = compras.find(c => c.id === compId);
   if(!comp) return;
@@ -2676,8 +2709,29 @@ function toggleParcelaPaga(compId, numParcela){
   if(idx >= 0) comp.parcelasPagas.splice(idx, 1);
   else comp.parcelasPagas.push(numParcela);
   salvarCompras(compras);
-  // Re-render only cartoes and painel (faster)
-  renderCartoes();
+  // Update DOM directly for speed
+  if(btnEl){
+    const pago = comp.parcelasPagas.includes(numParcela);
+    const c2 = cor||'#8A05BE';
+    btnEl.style.background = pago?'#D1FAE5':`${c2}18`;
+    btnEl.style.color = pago?'#10B981':c2;
+    btnEl.style.borderColor = pago?'#10B981':`${c2}40`;
+    btnEl.textContent = `${pago?'✅ ':''}${numParcela}/${comp.nParcelas} ${(comp.parcelas.find(p=>p.num===numParcela)?.mes||'').slice(0,3)}`;
+    // Update total badge if exists
+    const card = btnEl.closest('.card');
+    if(card){
+      const totalBadge = card.querySelector('[data-total-badge]');
+      if(totalBadge){
+        const mesFiltro = totalBadge.getAttribute('data-mes');
+        const total = compras.filter(c=>c.cartaoId===comp.cartaoId).reduce((a,c)=>{
+          const parc=c.parcelas.find(p=>p.mes===mesFiltro);
+          const pg=(c.parcelasPagas||[]).includes(parc?.num);
+          return a+(pg?0:(parc?.valor||0));
+        },0);
+        totalBadge.querySelector('span:last-child').textContent = fmtReal(total);
+      }
+    }
+  }
   renderDFPainel();
 }
 
@@ -2741,22 +2795,26 @@ function renderCompras(){
     const cor=cartao?cartao.cor:e.primary;
     const parcelasFiltro=filtroMes!=='Todos'?c.parcelas.filter(p=>p.mes===filtroMes):c.parcelas;
     const valorParc=fmtReal(c.valor/c.nParcelas);
-    return `<div class="card" style="padding:14px 16px;margin-bottom:8px;border-left:3px solid ${cor};background:#fff">
+    const isCaixa=!c.cartaoId&&(c.pagamento==='Caixa'||c.pagamento==='caixa');
+    const cardBg=isCaixa?'#DCFCE7':'#fff';
+    const cardCor=isCaixa?'#10B981':cor;
+    const cardTextCor=isCaixa?'#166534':cor;
+    return `<div class="card" style="padding:14px 16px;margin-bottom:8px;border-left:3px solid ${cardCor};background:${cardBg}">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
         <div style="flex:1">
-          <div style="font-weight:700;font-size:14px;color:${cor}">${c.desc}</div>
-          <div style="font-size:11px;color:${cor};font-weight:600;opacity:0.7;margin-top:3px">${cartao?cartao.nome:'Sem cartão'} · Total ${fmtReal(c.valor)}</div>
+          <div style="font-weight:700;font-size:14px;color:${cardTextCor}">${c.desc}</div>
+          <div style="font-size:11px;color:${cardTextCor};font-weight:600;opacity:0.7;margin-top:3px">${cartao?cartao.nome:'Sem cartão'} · Total ${fmtReal(c.valor)}</div>
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px">
-          <div style="font-weight:800;font-size:17px;color:${cor}">${valorParc}</div>
-          <div style="font-size:10px;color:${cor};opacity:0.6">${c.nParcelas}x parcelas</div>
+          <div style="font-weight:800;font-size:17px;color:${cardCor}">${valorParc}</div>
+          <div style="font-size:10px;color:${cardCor};opacity:0.6">${c.nParcelas}x parcelas</div>
         </div>
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px">
         <div style="display:flex;gap:4px;flex-wrap:wrap;flex:1">
           ${c.parcelas.map(p=>{
             const pago=(c.parcelasPagas||[]).includes(p.num);
-            return `<button onclick="toggleParcelaPaga(${c.id},${p.num})" style="background:${pago?'#D1FAE5':cor+'18'};color:${pago?'#10B981':cor};border-radius:6px;padding:3px 8px;font-size:10px;font-weight:700;border:1.5px solid ${pago?'#10B981':cor+'40'};cursor:pointer;transition:all 0.2s">${pago?'✅':''} ${p.num}/${c.nParcelas} ${p.mes.slice(0,3)}</button>`;
+            return `<button onclick="toggleParcelaPaga(${c.id},${p.num},this,'${cardCor}')" style="background:${pago?'#D1FAE5':cardCor+'18'};color:${pago?'#10B981':cardCor};border-radius:6px;padding:3px 8px;font-size:10px;font-weight:700;border:1.5px solid ${pago?'#10B981':cardCor+'40'};cursor:pointer;transition:all 0.2s">${pago?'✅':''} ${p.num}/${c.nParcelas} ${p.mes.slice(0,3)}</button>`;
           }).join('')}
         </div>
         <div style="display:flex;gap:5px;margin-left:8px;flex-shrink:0">
@@ -3008,6 +3066,49 @@ function renderFixas(){
 // PAINEL DE FELIPPE
 
 
+function toggleRitmo(){
+  const el = document.getElementById('ritmo-breakdown');
+  const btn = document.getElementById('btn-ritmo');
+  if(!el) return;
+  const visible = el.style.display !== 'none';
+  if(!visible){
+    // Calcular
+    const mesSel = document.getElementById('painel-mes')?.value||'Todos';
+    const mesFiltro = mesSel==='Todos'?MESES[new Date().getMonth()]:mesSel;
+    // Cartões não pagos
+    const totalCartoes = getCompras().reduce((a,c)=>{
+      if(!c.cartaoId) return a;
+      const parcs = c.parcelas.filter(p=>p.mes===mesFiltro);
+      return a+parcs.reduce((b,parc)=>{
+        const pago=(c.parcelasPagas||[]).includes(parc.num);
+        return b+(pago?0:parc.valor);
+      },0);
+    },0);
+    // Fixas do mês (não conta PIX/caixa/à vista)
+    const mesAnoAtual=`${mesFiltro}/${new Date().getFullYear()}`;
+    const fixasAtivas=getFixas().filter(f=>!f.temporaria||(f.mesesAtivos&&f.mesesAtivos.includes(mesAnoAtual)));
+    const totalFixas=fixasAtivas.reduce((a,f)=>a+f.valor,0);
+    // Total ainda devido
+    const totalDevo = totalCartoes + totalFixas;
+    // Dias restantes no mês
+    const hoje = new Date();
+    const ultimoDia = new Date(hoje.getFullYear(), hoje.getMonth()+1, 0).getDate();
+    const diasRestantes = Math.max(1, ultimoDia - hoje.getDate());
+    const porDia = totalDevo / diasRestantes;
+    // Atualiza DOM
+    document.getElementById('ritmo-cartoes').textContent = fmtReal(totalCartoes);
+    document.getElementById('ritmo-fixas').textContent = fmtReal(totalFixas);
+    document.getElementById('ritmo-total').textContent = fmtReal(totalDevo);
+    document.getElementById('ritmo-pordia').textContent = fmtReal(porDia)+'/dia';
+    if(btn) btn.textContent = fmtReal(porDia)+'/dia';
+  } else {
+    // Restore button text
+    if(btn) btn.textContent = '...';
+  }
+  el.style.display = visible ? 'none' : 'block';
+}
+
+
 function toggleDespesasPainel(){
   const el = document.getElementById('despesas-painel-lista');
   if(!el) return;
@@ -3083,6 +3184,14 @@ function renderDFPainel(){
   });
 
   const totalCartoes=gastosPorCartao.reduce((a,c)=>a+c.gasto,0);
+  // Pre-calc ritmo for button
+  const _fixasAtivas=fixas.filter(f=>!f.temporaria||(f.mesesAtivos&&f.mesesAtivos.includes(mesAnoAtual)));
+  const _totalFixas=_fixasAtivas.reduce((a,f)=>a+f.valor,0);
+  const _totalDevo=totalCartoes+_totalFixas;
+  const _hoje=new Date();
+  const _ultimoDia=new Date(_hoje.getFullYear(),_hoje.getMonth()+1,0).getDate();
+  const _diasRest=Math.max(1,_ultimoDia-_hoje.getDate());
+  const _porDia=_totalDevo/_diasRest;
   const totalFixas=fixasAtivas.reduce((a,f)=>a+f.valor,0);
   const gasCompras=getCompras().filter(c=>c.fromGasolina);
   const totalGasolina=gasCompras.reduce((a,c)=>{ const p=c.parcelas&&c.parcelas.find(x=>x.mes===mesFiltro); return a+(p?p.valor:0); },0);
@@ -3096,6 +3205,7 @@ function renderDFPainel(){
   const saldoPositivo=saldo>=0;
 
   document.getElementById('painel-titulo').textContent='Painel · DE FELIPPE';
+  const btnRitmo=document.getElementById('btn-ritmo'); if(btnRitmo&&document.getElementById('ritmo-breakdown')?.style.display==='none') btnRitmo.textContent=fmtReal(_porDia)+'/dia';
   document.getElementById('painel-sub').style.color=e.textSub;
   document.getElementById('painel-tipos').innerHTML='';
 
@@ -3171,9 +3281,9 @@ function renderDFPainel(){
         <div style="font-size:14px;font-weight:800;color:${c.cor};flex-shrink:0">${fmtReal(c.gasto)}</div>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;padding-left:14px">
-        ${dispLimite!==null?`<div style="font-size:10px;font-weight:700;color:#10B981">${fmtReal(dispLimite)}</div>`:'<div></div>'}
+        ${dispLimite!==null?`<div style="font-size:9px;font-weight:700;color:#10B981">💳 ${fmtReal(dispLimite)}</div>`:'<div></div>'}
         <div style="font-size:10px;color:#aaa;font-weight:700">${pct}%</div>
-        ${diasVenc?`<div style="font-size:10px;font-weight:700;color:${corVenc}">${diasVenc}</div>`:'<div></div>'}
+        ${diasVenc?`<div style="font-size:11px;font-weight:700;color:${corVenc}">${diasVenc}</div>`:'<div></div>'}
       </div>
     </div>`;
   }).join('');
@@ -3211,6 +3321,28 @@ function renderDFPainel(){
     </div>
 
     <div class="card" style="padding:20px;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <div style="font-size:12px;font-weight:700;color:#aaa">DESPESAS · ${mesFiltro.toUpperCase()}</div>
+        <button onclick="toggleRitmo()" id="btn-ritmo" style="background:#1A1A2E;border:1.5px solid #EF4444;color:#EF4444;border-radius:10px;padding:5px 10px;font-size:9px;font-weight:700;cursor:pointer">...</button>
+      </div>
+      <div id="ritmo-breakdown" style="display:none;background:#F5F0FF;border-radius:10px;padding:10px 12px;margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <span style="font-size:11px;color:#888">Cartões (não pagos)</span>
+          <span style="font-size:11px;font-weight:700;color:#6D28D9" id="ritmo-cartoes">-</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <span style="font-size:11px;color:#888">Fixas do mês</span>
+          <span style="font-size:11px;font-weight:700;color:#DC2626" id="ritmo-fixas">-</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;border-top:1px solid #DDD6FE;padding-top:6px;margin-top:2px;margin-bottom:4px">
+          <span style="font-size:11px;font-weight:700;color:#DC2626">Ainda devo</span>
+          <span style="font-size:11px;font-weight:800;color:#DC2626" id="ritmo-total">-</span>
+        </div>
+        <div style="display:flex;justify-content:space-between">
+          <span style="font-size:11px;color:#888">÷ dias restantes</span>
+          <span style="font-size:13px;font-weight:900;color:#6D28D9" id="ritmo-pordia">-</span>
+        </div>
+      </div>
       <div style="display:flex;flex-direction:column;align-items:center;gap:18px">
 
         <!-- DONUT POR CARTÃO -->
