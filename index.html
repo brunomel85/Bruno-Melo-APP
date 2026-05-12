@@ -178,6 +178,33 @@
       .emp-btn { padding: 5px 8px; font-size: 10px; }
       h1 { font-size: 19px; }
     }
+
+    /* TOAST COMPRA */
+    #toast-compra {
+      display:none;
+      position:absolute;
+      left:0; right:0;
+      bottom:0;
+      background:#10B981;
+      color:#fff;
+      border-radius:12px;
+      padding:14px 18px;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+      z-index:10;
+      animation:none;
+    }
+    #toast-compra.show {
+      display:flex;
+      animation:toastIn 0.25s ease;
+    }
+    @keyframes toastIn {
+      from { opacity:0; transform:scale(0.95); }
+      to   { opacity:1; transform:scale(1); }
+    }
+    #toast-compra-title { font-size:13px; font-weight:700; }
+    #toast-compra-sub { font-size:11px; opacity:0.9; margin-left:4px; }
   </style>
 </head>
 <body>
@@ -252,7 +279,10 @@
     <div class="top-bar">
       <div><h1>💳 Cartões</h1><div class="subtitle" style="margin-bottom:0">Seus cartões de crédito</div></div>
     </div>
-    <div class="card" style="padding:20px;margin-bottom:16px">
+
+    <button onclick="toggleCartaoForm()" id="btn-novo-cartao" style="width:100%;padding:13px;border-radius:14px;border:2px dashed #1A1A2E;background:#F8F8F8;color:#1A1A2E;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:12px">➕ Novo Cartão</button>
+
+    <div id="cartao-form-card" class="card" style="padding:20px;margin-bottom:16px;display:none">
       <h3 id="df-cartao-form-titulo" style="font-size:14px;font-weight:700;margin-bottom:14px">➕ Novo Cartão</h3>
 
       <!-- Seletor de banco -->
@@ -342,7 +372,7 @@
         </div>
         <div><label class="form-label">Data da Compra</label><input class="form-input" type="date" id="df-comp-data" /></div>
       </div>
-      <button class="btn-primary" id="comp-btn-salvar" onclick="salvarCompra()">✅ Lançar Compra</button>
+      <div style="position:relative"><div id="toast-compra"><span style="font-size:15px">✅</span><span id="toast-compra-title">Compra lançada!</span><span id="toast-compra-sub"></span></div><button class="btn-primary" id="comp-btn-salvar" onclick="salvarCompra()">✅ Lançar Compra</button></div>
       <button class="btn-secondary" id="comp-btn-cancelar" onclick="cancelarCompra()" style="display:none;margin-top:8px;width:100%;padding:12px;border-radius:12px;border:1.5px solid #E5E7EB;background:#fff;color:#555;font-weight:700;font-size:14px;cursor:pointer">Cancelar</button>
     </div>
     <div class="filters">
@@ -761,7 +791,7 @@
   </div>
 
   <!-- UBER PAGES -->
-  <div id="page-km-dia" class="page">
+  <div id="page-km-dia" class="page" style="padding:0 25px">
     <div class="top-bar">
       <div><h1>🚗 KM do Dia</h1><div class="subtitle" style="margin-bottom:0">Registre os km e corridas do dia</div></div>
     </div>
@@ -777,7 +807,7 @@
     <div id="lista-km-dia"></div>
   </div>
 
-  <div id="page-km-mes" class="page">
+  <div id="page-km-mes" class="page" style="padding:0 25px">
     <div class="top-bar">
       <div><h1>📊 KM do Mês</h1><div class="subtitle" style="margin-bottom:0">Total acumulado</div></div>
       <select class="filter-select" id="km-filtro-mes" onchange="renderKmMes()"><option value="Todos">Todos os meses</option></select>
@@ -786,7 +816,7 @@
     <div id="lista-km-mes"></div>
   </div>
 
-  <div id="page-valor-dia" class="page">
+  <div id="page-valor-dia" class="page" style="padding:0 25px">
     <div class="top-bar">
       <div><h1>💰 Valor do Dia</h1><div class="subtitle" style="margin-bottom:0">Registre o valor ganho</div></div>
     </div>
@@ -801,7 +831,7 @@
     <div id="lista-valor-dia"></div>
   </div>
 
-  <div id="page-valor-mes" class="page">
+  <div id="page-valor-mes" class="page" style="padding:0 25px">
     <div class="top-bar">
       <div><h1>💵 Valor do Mês</h1><div class="subtitle" style="margin-bottom:0">Total acumulado</div></div>
       <select class="filter-select" id="valor-filtro-mes" onchange="renderValorMes()"><option value="Todos">Todos os meses</option></select>
@@ -811,7 +841,7 @@
   </div>
 
   <!-- UBER: META / PROMOÇÃO -->
-  <div id="page-meta" class="page">
+  <div id="page-meta" class="page" style="padding:0 25px">
     <div class="top-bar">
       <div><h1>🎯 Meta</h1><div class="subtitle" style="margin-bottom:0">Acompanhe sua promoção</div></div>
     </div>
@@ -1067,16 +1097,16 @@ function renderKmDia(){
   const e=EMPRESAS[2];
   document.getElementById('km-btn').style.background=`linear-gradient(135deg,${e.primary},${e.primaryDark})`;
   document.getElementById('km-data').value=document.getElementById('km-data').value||todayStr();
-  const dados=[...getKmDados()].sort((a,b)=>b.data.localeCompare(a.data));
+  const dados=[...getKmDados()].sort((a,b)=>b.id-a.id);
   if(dados.length===0){document.getElementById('lista-km-dia').innerHTML='<div class="empty">Nenhum registro ainda.</div>';return;}
   document.getElementById('lista-km-dia').innerHTML=dados.map(d=>`
-    <div class="card" style="padding:16px;margin-bottom:9px;display:flex;align-items:center;gap:14px">
-      <div style="font-size:28px">🚗</div>
+    <div class="card" style="padding:12px 14px;margin-bottom:7px;display:flex;align-items:center;gap:12px">
+      <div style="font-size:18px;width:36px;height:36px;background:#f5f5f5;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0">🚗</div>
       <div style="flex:1">
-        <div style="font-weight:700;font-size:15px">${d.km} km ${d.corridas?`· 🏁 ${d.corridas} corridas`:''}</div>
-        <div style="font-size:12px;opacity:0.55">${fmtData(d.data)} · ${d.mes}</div>
+        <div style="font-weight:700;font-size:13px">${d.km} km${d.corridas?` · ${d.corridas} corridas 🏁`:''}</div>
+        <div style="font-size:11px;opacity:0.55;margin-top:1px">${fmtData(d.data)} · ${d.mes}</div>
       </div>
-      <button onclick="excluirKm(${d.id})" style="background:rgba(239,68,68,0.08);border:1px solid #EF4444;color:#EF4444;padding:6px 10px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600">🗑️</button>
+      <button onclick="excluirKm(${d.id})" style="background:rgba(239,68,68,0.08);border:1px solid #EF4444;color:#EF4444;padding:5px 8px;border-radius:7px;cursor:pointer;font-size:11px;font-weight:600">🗑️</button>
     </div>`).join('');
 }
 
@@ -1241,16 +1271,16 @@ function renderValorDia(){
   const e=EMPRESAS[2];
   document.getElementById('valor-btn').style.background=`linear-gradient(135deg,${e.primary},${e.primaryDark})`;
   document.getElementById('valor-data').value=document.getElementById('valor-data').value||todayStr();
-  const dados=[...getValorDados()].sort((a,b)=>b.data.localeCompare(a.data));
+  const dados=[...getValorDados()].sort((a,b)=>b.id-a.id);
   if(dados.length===0){document.getElementById('lista-valor-dia').innerHTML='<div class="empty">Nenhum valor registrado ainda.</div>';return;}
   document.getElementById('lista-valor-dia').innerHTML=dados.map(d=>`
-    <div class="card" style="padding:16px;margin-bottom:9px;display:flex;align-items:center;gap:14px">
-      <div style="font-size:28px">💰</div>
+    <div class="card" style="padding:12px 14px;margin-bottom:7px;display:flex;align-items:center;gap:12px">
+      <div style="font-size:18px;width:36px;height:36px;background:#f5f5f5;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0">💰</div>
       <div style="flex:1">
-        <div style="font-weight:700;font-size:15px">${fmtReal(d.valor)}</div>
-        <div style="font-size:12px;opacity:0.55">${fmtData(d.data)} · ${d.mes}</div>
+        <div style="font-weight:700;font-size:13px">${fmtReal(d.valor)}${d.obs?` · ${d.obs}`:''}</div>
+        <div style="font-size:11px;opacity:0.55;margin-top:1px">${fmtData(d.data)} · ${d.mes}</div>
       </div>
-      <button onclick="excluirValor(${d.id})" style="background:rgba(239,68,68,0.08);border:1px solid #EF4444;color:#EF4444;padding:6px 10px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600">🗑️</button>
+      <button onclick="excluirValor(${d.id})" style="background:rgba(239,68,68,0.08);border:1px solid #EF4444;color:#EF4444;padding:5px 8px;border-radius:7px;cursor:pointer;font-size:11px;font-weight:600">🗑️</button>
     </div>`).join('');
 }
 
@@ -1369,8 +1399,8 @@ function renderPainel(){
       </div>`;
 
     // Últimos lançamentos
-    const ultKm=[...kmDados].sort((a,b)=>b.data.localeCompare(a.data)).slice(0,3);
-    const ultVal=[...valorDados].sort((a,b)=>b.data.localeCompare(a.data)).slice(0,3);
+    const ultKm=[...kmDados].sort((a,b)=>b.id-a.id).slice(0,3);
+    const ultVal=[...valorDados].sort((a,b)=>b.id-a.id).slice(0,3);
     document.getElementById('painel-recentes').innerHTML=
       [...ultKm.map(d=>`<div class="recent-item">
         <div class="item-icon" style="background:#EFF6FF">🚗</div>
@@ -1440,7 +1470,7 @@ function renderPainel(){
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%">${legend}</div>
       </div>
     </div>`;
-  const recentes=[...registros].sort((a,b)=>b.data.localeCompare(a.data)).slice(0,5);
+  const recentes=[...registros].sort((a,b)=>b.id-a.id).slice(0,5);
   document.getElementById('painel-recentes').innerHTML=recentes.length===0
     ?'<div style="padding:20px;text-align:center;opacity:0.45;font-size:13px">Nenhum registro ainda.</div>'
     :recentes.map(r=>{
@@ -2006,7 +2036,7 @@ function renderRegistros(){
   const lista=registros.filter(r=>
     (mes==='Todos'||r.mes===mes)&&(tipo==='Todos'||r.tipo===tipo)&&
     (!busca||r.local.toLowerCase().includes(busca)||r.responsavel.toLowerCase().includes(busca))
-  ).sort((a,b)=>b.data.localeCompare(a.data));
+  ).sort((a,b)=>b.id-a.id);
   document.getElementById('reg-count').textContent=`${lista.length} operações encontradas`;
   document.getElementById('reg-count').style.color=e.textSub;
   document.getElementById('btn-new-reg').style.background=e.primary;
@@ -2147,6 +2177,24 @@ function salvarFixas(d){ lsSet('df_fixas',d); }
 let editandoCartaoId=null, editandoFixaId=null;
 
 // CARTÕES
+
+
+function mostrarToastCompra(desc, valor, parcelas, cartaoNome){
+  const el = document.getElementById('toast-compra');
+  const sub = document.getElementById('toast-compra-sub');
+  if(!el) return;
+  sub.textContent = (cartaoNome?cartaoNome+' · ':'')+fmtReal(valor)+(parcelas>1?' · '+parcelas+'x':'');
+  el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'), 2000);
+}
+function toggleCartaoForm(){
+  const form = document.getElementById('cartao-form-card');
+  const btn = document.getElementById('btn-novo-cartao');
+  if(!form) return;
+  const visible = form.style.display !== 'none';
+  form.style.display = visible ? 'none' : 'block';
+  if(btn) btn.textContent = visible ? '➕ Novo Cartão' : '✖️ Cancelar';
+}
 function salvarCartao(){
   const nome=document.getElementById('df-cartao-nome').value.trim();
   if(!nome){alert('Preencha o nome do cartão.');return;}
@@ -2231,13 +2279,13 @@ function renderCartoes(){
         ${comprasMes.map(p=>{
           const parc=p.parcelas.find(x=>x.mes===mesAtual);
           const pago=parc&&(p.parcelasPagas||[]).includes(parc.num);
-          return `<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #f9f9f9">
+          return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f9f9f9">
             <div style="flex:1">
               <div style="font-size:12px;font-weight:600;${pago?'text-decoration:line-through;opacity:0.4':''}">${p.desc}</div>
               <div style="font-size:10px;opacity:0.45">${parc?parc.num+'/'+p.nParcelas+' parcela':''}</div>
             </div>
             <div style="font-size:13px;font-weight:700;color:${pago?'#10B981':c.cor};${pago?'text-decoration:line-through':''}">${fmtReal(parc?parc.valor:0)}</div>
-            ${parc?`<button onclick="toggleParcelaPaga(${p.id},${parc.num});event.stopPropagation()" style="background:${pago?'#D1FAE5':'#f0f0f0'};border:none;border-radius:6px;padding:4px 7px;font-size:11px;cursor:pointer">${pago?'✅':'○'}</button>`:''}
+            <button onclick="toggleParcelaPaga(${p.id},${parc?parc.num:0});event.stopPropagation()" style="width:26px;height:26px;border-radius:50%;border:2px solid #10B981;background:${pago?'#10B981':'transparent'};display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-size:13px;transition:all 0.2s">${pago?'✅':''}</button>
           </div>`;
         }).join('')}
       </div>`:'';
@@ -2344,6 +2392,7 @@ function salvarCompra(){
   const cfBtn=document.getElementById('comp-btn-salvar'); if(cfBtn) cfBtn.textContent='✅ Lançar Compra';
   const cfCancel=document.getElementById('comp-btn-cancelar'); if(cfCancel) cfCancel.style.display='none';
   mostrarSucesso(); renderCompras(); renderCartoes(); renderDFPainel();
+  const _cartao=getCartoes().find(c=>c.id===cartaoId); mostrarToastCompra(desc,valor,nParcelas,_cartao?_cartao.nome:'');
 }
 function excluirCompra(id){
   if(!confirm('Excluir esta compra?'))return;
@@ -2360,7 +2409,8 @@ function toggleParcelaPaga(compId, numParcela){
   if(idx >= 0) comp.parcelasPagas.splice(idx, 1);
   else comp.parcelasPagas.push(numParcela);
   salvarCompras(compras);
-  renderCompras();
+  // Re-render only cartoes and painel (faster)
+  renderCartoes();
   renderDFPainel();
 }
 
@@ -2398,10 +2448,18 @@ function cancelarCompra(){
 }
 
 function renderCompras(){
+  // Salva valores selecionados antes de repopular
+  const filtroMesEl = document.getElementById('df-comp-filtro-mes');
+  const filtroCartaoEl = document.getElementById('df-comp-filtro-cartao');
+  const savedMes = filtroMesEl ? filtroMesEl.value : 'Todos';
+  const savedCartao = filtroCartaoEl ? filtroCartaoEl.value : 'Todos';
   popularMesesSelect('df-comp-filtro-mes');
   popularSelectCartoes();
-  const filtroMes=document.getElementById('df-comp-filtro-mes').value;
-  const filtroCartao=document.getElementById('df-comp-filtro-cartao').value;
+  // Restaura valores após repopular
+  if(filtroMesEl && savedMes) filtroMesEl.value = savedMes;
+  if(filtroCartaoEl && savedCartao) filtroCartaoEl.value = savedCartao;
+  const filtroMes = filtroMesEl ? filtroMesEl.value : 'Todos';
+  const filtroCartao = filtroCartaoEl ? filtroCartaoEl.value : 'Todos';
   const cartoes=getCartoes();
   let compras=getCompras();
   if(filtroMes!=='Todos') compras=compras.filter(c=>c.parcelas.some(p=>p.mes===filtroMes));
@@ -2615,6 +2673,13 @@ function renderFixas(){
 
 // PAINEL DE FELIPPE
 
+
+function toggleDespesasPainel(){
+  const el = document.getElementById('despesas-painel-lista');
+  if(!el) return;
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
 function toggleCartoesPainel(){
   const el = document.getElementById('cartoes-painel-lista');
   if(!el) return;
@@ -2709,7 +2774,20 @@ function renderDFPainel(){
       let proxVenc=new Date(anoHoje, mesHoje, diaVenc);
       if(proxVenc<=hoje) proxVenc=new Date(anoHoje, mesHoje+1, diaVenc);
       const diff=Math.ceil((proxVenc-hoje)/(1000*60*60*24));
-      if(diff<=7){ diasVenc=`${diff}d`; corVenc='#EF4444'; }
+      // Verifica se está atrasado (vencimento passou e tem parcelas não pagas no mês)
+      const mesAtualIdx2 = new Date().getMonth();
+      const anoAtual2 = new Date().getFullYear();
+      const diaHoje = new Date().getDate();
+      const vencDia = parseInt(c.venc)||0;
+      const temParcelasNaoPargas = getCompras().filter(p=>p.cartaoId===c.id).some(p=>{
+        const parc = p.parcelas.find(x=>x.mes===MESES[mesAtualIdx2]);
+        if(!parc) return false;
+        return !(p.parcelasPagas||[]).includes(parc.num);
+      });
+      const venceuEsteMs = vencDia>0 && diaHoje>vencDia;
+      if(diff<0 || (venceuEsteMs && temParcelasNaoPargas)){
+        diasVenc='atrasado'; corVenc='#EF4444';
+      } else if(diff<=7){ diasVenc=`${diff}d`; corVenc='#EF4444'; }
       else if(diff<=15){ diasVenc=`${diff}d`; corVenc='#F59E0B'; }
       else { diasVenc=`${diff}d`; corVenc='#10B981'; }
     }
@@ -2724,9 +2802,9 @@ function renderDFPainel(){
         <div style="font-size:14px;font-weight:800;color:${c.cor};flex-shrink:0">${fmtReal(c.gasto)}</div>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;padding-left:14px">
-        ${diasVenc?`<div style="font-size:10px;font-weight:700;color:${corVenc}">${diasVenc}</div>`:'<div></div>'}
         ${dispLimite!==null?`<div style="font-size:10px;font-weight:700;color:#10B981">${fmtReal(dispLimite)}</div>`:'<div></div>'}
         <div style="font-size:10px;color:#aaa;font-weight:700">${pct}%</div>
+        ${diasVenc?`<div style="font-size:10px;font-weight:700;color:${corVenc}">${diasVenc}</div>`:'<div></div>'}
       </div>
     </div>`;
   }).join('');
@@ -2736,16 +2814,43 @@ function renderDFPainel(){
   document.getElementById('painel-stats').innerHTML=`
     <!-- CARDS RESUMO RÁPIDO -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
-      <div style="background:#fff;border-radius:14px;padding:14px;border:1.5px solid #EDE9FE;box-shadow:0 2px 8px rgba(109,40,217,0.07)">
+      <div onclick="toggleDespesasPainel()" style="background:#fff;border-radius:14px;padding:14px;border:1.5px solid #EDE9FE;box-shadow:0 2px 8px rgba(109,40,217,0.07);cursor:pointer">
         <div style="font-size:10px;font-weight:700;color:#aaa;margin-bottom:4px">💸 DESPESAS GERAL</div>
         <div style="font-size:18px;font-weight:800;color:#EF4444">${fmtReal(totalGeral)}</div>
-        <div style="font-size:10px;color:#bbb;margin-top:2px">${mesFiltro}</div>
+        <div style="font-size:10px;color:#bbb;margin-top:2px">${mesFiltro} · toque para ver ▾</div>
       </div>
       <div onclick="toggleCartoesPainel()" style="background:#fff;border-radius:14px;padding:14px;border:1.5px solid #EDE9FE;box-shadow:0 2px 8px rgba(109,40,217,0.07);cursor:pointer">
         <div style="font-size:10px;font-weight:700;color:#aaa;margin-bottom:4px">💳 CARTÕES DO MÊS</div>
         <div style="font-size:18px;font-weight:800;color:${e.primary}">${fmtReal(totalCartoes)}</div>
         <div style="font-size:10px;color:#bbb;margin-top:2px">toque para ver detalhes ▾</div>
       </div>
+    </div>
+
+    <!-- DESPESAS FORA DO CARTÃO -->
+    <div id="despesas-painel-lista" style="display:none;background:#fff;border-radius:14px;padding:14px;margin-bottom:12px;border:1.5px solid #EDE9FE">
+      <div style="font-size:12px;font-weight:700;color:#555;margin-bottom:10px">💸 Fora do cartão — \${mesFiltro}</div>
+      \${(()=>{
+        const itens=[];
+        // Gasolina do mês
+        const gasItens=getGasolina().filter(g=>MESES[new Date(g.data+'T12:00:00').getMonth()]===mesFiltro);
+        const totalGas=gasItens.reduce((a,g)=>a+g.valor,0);
+        if(totalGas>0) itens.push({nome:'⛽️ Gasolina',valor:totalGas,cor:'#F97316'});
+        // Compras sem cartão do mês (PIX/Dinheiro/Caixa)
+        const comprasSemCartao=getCompras().filter(c=>!c.cartaoId&&c.parcelas.some(p=>p.mes===mesFiltro));
+        comprasSemCartao.forEach(c=>{
+          const parc=c.parcelas.find(p=>p.mes===mesFiltro);
+          if(parc) itens.push({nome:c.desc,valor:parc.valor,cor:'#6D28D9',sub:c.pagamento||''});
+        });
+        if(itens.length===0) return '<div style="text-align:center;opacity:0.4;font-size:13px">Nenhuma despesa fora do cartão</div>';
+        return itens.map(it=>\`
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f5f5f5">
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:600">\${it.nome}</div>
+              \${it.sub?\`<div style="font-size:10px;opacity:0.5">\${it.sub}</div>\`:''}
+            </div>
+            <div style="font-size:13px;font-weight:800;color:\${it.cor}">\${fmtReal(it.valor)}</div>
+          </div>\`).join('');
+      })()}
     </div>
 
     <!-- CARTÕES EXPANDIDOS -->
@@ -2820,7 +2925,7 @@ function renderDFPainel(){
     </div>`;
 
   // Últimas compras
-  const ultimas=[...compras].sort((a,b)=>b.dataCompra.localeCompare(a.dataCompra)).slice(0,5);
+  const ultimas=[...compras].sort((a,b)=>b.id-a.id).slice(0,5);
   document.getElementById('painel-recentes').innerHTML=ultimas.length===0
     ?'<div style="padding:20px;text-align:center;opacity:0.45;font-size:13px">Nenhuma compra ainda.</div>'
     :ultimas.map(c=>{
@@ -3247,7 +3352,7 @@ function renderGasolina(){
   popularMesesSelect('gas-filtro-mes');
   const filtro=document.getElementById('gas-filtro-mes').value;
   const todos=getGasolina();
-  const dados=todos.filter(d=>filtro==='Todos'||d.mes===filtro).sort((a,b)=>b.data.localeCompare(a.data));
+  const dados=todos.filter(d=>filtro==='Todos'||d.mes===filtro).sort((a,b)=>b.id-a.id);
 
   // Resumo
   const totalValor=dados.reduce((a,d)=>a+d.valor,0);
