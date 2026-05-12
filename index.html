@@ -327,6 +327,11 @@
       </div>
     </div>
     <div id="lista-df-cartoes"></div>
+    <div style="margin-top:16px;padding:14px;background:#FFF7ED;border-radius:12px;border:1.5px solid #F59E0B">
+      <div style="font-size:12px;font-weight:700;color:#92400E;margin-bottom:6px">⚠️ Ajuste Nubank</div>
+      <div style="font-size:11px;color:#92400E;margin-bottom:10px">Move todas as parcelas do Nubank 1 mês para frente. Use apenas uma vez!</div>
+      <button onclick="moverParcelasNubank()" style="width:100%;padding:11px;border-radius:10px;background:#F59E0B;border:none;color:#fff;font-weight:700;font-size:13px;cursor:pointer">🔄 Mover Nubank 1 mês</button>
+    </div>
   </div>
 
   <!-- ===== DE FELIPPE: COMPRAS ===== -->
@@ -2199,6 +2204,46 @@ function toggleCompraForm(){
   if(btn) btn.textContent = visible ? '➕ Nova Compra' : '✖️ Cancelar';
 }
 
+
+
+function moverParcelasNubank(){
+  const cartoes = JSON.parse(localStorage.getItem('df_cartoes')||'[]');
+  const cartao = cartoes.find(c=>c.nome.toLowerCase().includes('nubank'));
+  if(!cartao){ alert('Cartão Nubank não encontrado!'); return; }
+  
+  let compras = JSON.parse(localStorage.getItem('df_compras')||'[]');
+  let count = 0;
+  
+  compras = compras.map(c=>{
+    if(c.cartaoId !== cartao.id) return c;
+    count++;
+    const novasParcelas = c.parcelas.map(p=>{
+      const mesIdx = MESES.indexOf(p.mes);
+      const novoMesIdx = (mesIdx+1) % 12;
+      const anoBase = p.ano || new Date().getFullYear();
+      const novoAno = novoMesIdx === 0 ? anoBase+1 : anoBase;
+      return {...p, mes:MESES[novoMesIdx], ano:novoAno};
+    });
+    return {...c, parcelas:novasParcelas};
+  });
+  
+  localStorage.setItem('df_compras', JSON.stringify(compras));
+  renderCompras();
+  renderDFPainel();
+  alert('✅ '+count+' compras do Nubank movidas 1 mês para frente!');
+}
+function irParaCartao(id){
+  // Vai para aba cartoes
+  navTo('df-cartoes');
+  // Abre o cartão selecionado
+  cartaoAberto = id;
+  renderCartoes();
+  // Rola para o cartão
+  setTimeout(()=>{
+    const el = document.getElementById('cartao-icon-'+id);
+    if(el) el.closest('.card').scrollIntoView({behavior:'smooth', block:'center'});
+  }, 100);
+}
 function toggleCartaoForm(){
   const form = document.getElementById('cartao-form-card');
   const btn = document.getElementById('btn-novo-cartao');
@@ -2501,20 +2546,22 @@ function renderCompras(){
           <div style="font-weight:700;font-size:14px;color:${cor}">${c.desc}</div>
           <div style="font-size:11px;color:${cor};font-weight:600;opacity:0.7;margin-top:3px">${cartao?cartao.nome:'Sem cartão'} · Total ${fmtReal(c.valor)}</div>
         </div>
-        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
-          <div style="display:flex;gap:5px">
-            <button onclick="editarCompra(${c.id})" style="background:${cor}18;border:1px solid ${cor};color:${cor};padding:5px 9px;border-radius:7px;cursor:pointer;font-size:11px">✏️</button>
-            <button onclick="excluirCompra(${c.id})" style="background:rgba(239,68,68,0.08);border:1px solid #EF4444;color:#EF4444;padding:5px 9px;border-radius:7px;cursor:pointer;font-size:11px">🗑️</button>
-          </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px">
           <div style="font-weight:800;font-size:17px;color:${cor}">${valorParc}</div>
           <div style="font-size:10px;color:${cor};opacity:0.6">${c.nParcelas}x parcelas</div>
         </div>
       </div>
-      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:10px">
-        ${c.parcelas.map(p=>{
-          const pago=(c.parcelasPagas||[]).includes(p.num);
-          return `<button onclick="toggleParcelaPaga(${c.id},${p.num})" style="background:${pago?'#D1FAE5':cor+'18'};color:${pago?'#10B981':cor};border-radius:6px;padding:3px 8px;font-size:10px;font-weight:700;border:1.5px solid ${pago?'#10B981':cor+'40'};cursor:pointer;transition:all 0.2s">${pago?'✅':''} ${p.num}/${c.nParcelas} ${p.mes.slice(0,3)}</button>`;
-        }).join('')}
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px">
+        <div style="display:flex;gap:4px;flex-wrap:wrap;flex:1">
+          ${c.parcelas.map(p=>{
+            const pago=(c.parcelasPagas||[]).includes(p.num);
+            return `<button onclick="toggleParcelaPaga(${c.id},${p.num})" style="background:${pago?'#D1FAE5':cor+'18'};color:${pago?'#10B981':cor};border-radius:6px;padding:3px 8px;font-size:10px;font-weight:700;border:1.5px solid ${pago?'#10B981':cor+'40'};cursor:pointer;transition:all 0.2s">${pago?'✅':''} ${p.num}/${c.nParcelas} ${p.mes.slice(0,3)}</button>`;
+          }).join('')}
+        </div>
+        <div style="display:flex;gap:5px;margin-left:8px;flex-shrink:0">
+          <button onclick="editarCompra(${c.id})" style="background:${cor}18;border:1px solid ${cor};color:${cor};padding:4px 8px;border-radius:7px;cursor:pointer;font-size:11px">✏️</button>
+          <button onclick="excluirCompra(${c.id})" style="background:rgba(239,68,68,0.08);border:1px solid #EF4444;color:#EF4444;padding:4px 8px;border-radius:7px;cursor:pointer;font-size:11px">🗑️</button>
+        </div>
       </div>
     </div>`;
   }).join('');
@@ -2840,7 +2887,7 @@ function renderDFPainel(){
     const totalComp=getCompras().filter(p=>p.cartaoId===c.id).reduce((a,p)=>a+p.parcelas.reduce((b,parc)=>{
       const pg=(p.parcelasPagas||[]).includes(parc.num); return b+(pg?0:parc.valor);},0),0);
     const dispLimite=c.limite>0?Math.max(0,c.limite-totalComp):null;
-    return `<div style="background:#F5F0FF;border-radius:12px;padding:10px 12px">
+    return `<div onclick="irParaCartao(${c.id})" style="background:#F5F0FF;border-radius:12px;padding:10px 12px;cursor:pointer;transition:opacity 0.2s" onmousedown="this.style.opacity='0.7'" onmouseup="this.style.opacity='1'">
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
         <div style="width:8px;height:8px;border-radius:50%;background:${c.cor};flex-shrink:0"></div>
         <div style="font-size:12px;font-weight:700;color:#1A0A2E;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.nome}</div>
