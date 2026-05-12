@@ -3205,7 +3205,10 @@ function renderDFPainel(){
   const saldoPositivo=saldo>=0;
 
   document.getElementById('painel-titulo').textContent='Painel · DE FELIPPE';
-  const btnRitmo=document.getElementById('btn-ritmo'); if(btnRitmo&&document.getElementById('ritmo-breakdown')?.style.display==='none') btnRitmo.textContent=fmtReal(_porDia)+'/dia';
+  const btnRitmo=document.getElementById('btn-ritmo'); 
+  if(btnRitmo&&document.getElementById('ritmo-breakdown')?.style.display==='none') {
+    btnRitmo.textContent=isNaN(_porDia)?'R$0/dia':fmtReal(_porDia)+'/dia';
+  }
   document.getElementById('painel-sub').style.color=e.textSub;
   document.getElementById('painel-tipos').innerHTML='';
 
@@ -3322,7 +3325,7 @@ function renderDFPainel(){
 
     <div class="card" style="padding:20px;margin-bottom:12px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-        <div style="font-size:12px;font-weight:700;color:#aaa">DESPESAS · ${mesFiltro.toUpperCase()}</div>
+        <div style="font-size:12px;font-weight:700;color:#aaa">DESPESAS · ${(mesFiltro||'').toUpperCase()}</div>
         <button onclick="toggleRitmo()" id="btn-ritmo" style="background:#1A1A2E;border:1.5px solid #EF4444;color:#EF4444;border-radius:10px;padding:5px 10px;font-size:9px;font-weight:700;cursor:pointer">...</button>
       </div>
       <div id="ritmo-breakdown" style="display:none;background:#F5F0FF;border-radius:10px;padding:10px 12px;margin-bottom:14px">
@@ -3880,4 +3883,3 @@ renderPainel();
 </script>
 </body>
 </html>
- 
