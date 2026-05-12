@@ -327,11 +327,6 @@
       </div>
     </div>
     <div id="lista-df-cartoes"></div>
-    <div style="margin-top:16px;padding:14px;background:#FFF7ED;border-radius:12px;border:1.5px solid #F59E0B">
-      <div style="font-size:12px;font-weight:700;color:#92400E;margin-bottom:6px">⚠️ Ajuste Nubank</div>
-      <div style="font-size:11px;color:#92400E;margin-bottom:10px">Move todas as parcelas do Nubank 1 mês para frente. Use apenas uma vez!</div>
-      <button onclick="moverParcelasNubank()" style="width:100%;padding:11px;border-radius:10px;background:#F59E0B;border:none;color:#fff;font-weight:700;font-size:13px;cursor:pointer">🔄 Mover Nubank 1 mês</button>
-    </div>
   </div>
 
   <!-- ===== DE FELIPPE: COMPRAS ===== -->
@@ -2306,7 +2301,9 @@ function excluirCartao(id){
   renderCartoes(); popularSelectCartoes();
 }
 let cartaoAberto=null;
+let cartaoMesFiltro={};
 function toggleCartao(id){ cartaoAberto=cartaoAberto===id?null:id; renderCartoes(); }
+function setCartaoMes(id,mes,e){ if(e)e.stopPropagation(); cartaoMesFiltro[id]=mes; renderCartoes(); }
 
 function renderCartoes(){
   const cartoes=getCartoes().sort((a,b)=>(parseInt(a.venc)||31)-(parseInt(b.venc)||31));
@@ -2335,13 +2332,22 @@ function renderCartoes(){
     const corBarra=pctUsado>80?'#EF4444':pctUsado>50?'#F59E0B':c.cor;
 
     const openCard = cartaoAberto===c.id;
-    // Compras do mês deste cartão
-    const comprasMes=compras.filter(p=>p.cartaoId===c.id&&p.parcelas.some(x=>x.mes===mesAtual));
-    const listaCompras=openCard&&comprasMes.length>0?`
-      <div style="border-top:1px solid #f0f0f0;margin-top:12px;padding-top:12px">
-        <div style="font-size:11px;font-weight:700;opacity:0.5;margin-bottom:8px">COMPRAS DE ${mesAtual.toUpperCase()}</div>
+    // Mês filtrado para este cartão
+    const mesFiltroCartao = cartaoMesFiltro[c.id] || mesAtual;
+    // Todos os meses com compras deste cartão
+    const mesesComCompras = [...new Set(compras.filter(p=>p.cartaoId===c.id).flatMap(p=>p.parcelas.map(x=>x.mes)))];
+    const comprasMes=compras.filter(p=>p.cartaoId===c.id&&p.parcelas.some(x=>x.mes===mesFiltroCartao));
+    const listaCompras=openCard?`
+      <div style="border-top:1px solid #f0f0f0;margin-top:12px;padding-top:12px" onclick="event.stopPropagation()">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+          <div style="font-size:11px;font-weight:700;opacity:0.5">MÊS:</div>
+          ${MESES.filter(m=>mesesComCompras.includes(m)).map(m=>`
+            <button onclick="setCartaoMes(${c.id},'${m}',event)" style="padding:3px 10px;border-radius:20px;border:1.5px solid ${m===mesFiltroCartao?c.cor:'#E5E7EB'};background:${m===mesFiltroCartao?c.cor:'transparent'};color:${m===mesFiltroCartao?'#fff':'#888'};font-size:10px;font-weight:700;cursor:pointer">${m}</button>
+          `).join('')}
+        </div>
+        ${comprasMes.length===0?`<div style="text-align:center;opacity:0.4;font-size:13px;padding:10px 0">Nenhuma compra em ${mesFiltroCartao}</div>`:''}
         ${comprasMes.map(p=>{
-          const parc=p.parcelas.find(x=>x.mes===mesAtual);
+          const parc=p.parcelas.find(x=>x.mes===mesFiltroCartao);
           const pago=parc&&(p.parcelasPagas||[]).includes(parc.num);
           return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f9f9f9">
             <div style="flex:1">
