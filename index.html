@@ -459,7 +459,7 @@
   </div>
 
   <!-- ROLAGEM -->
-  <div id="page-df-rolagem" class="page">
+  <div id="page-df-rolagem" class="page" style="padding:0 23px">
     <div class="top-bar">
       <div><h1>🔂 Rolagem</h1><div class="subtitle" style="margin-bottom:0">Role dívidas para o próximo mês</div></div>
     </div>
@@ -1095,7 +1095,7 @@ function navTo(page,noReset){
   if(el) el.classList.add('active');
   renderNavTabs(page);
   if(page==='painel') renderPainel();
-  if(page==='rota') renderRota();
+  if(page==='rota'){ autoCarryRota(); renderRota(); }
   if(page==='demandas'){ renderDemandas(); const dd=document.getElementById('d-data'); if(dd&&!dd.value) dd.value=todayStr(); }
   if(page==='demandas') setTimeout(toggleModeloDemanda, 50);
   if(page==='registros') renderRegistros();
@@ -1590,6 +1590,26 @@ function renderPainel(){
 function todayStr(){ return new Date().toISOString().slice(0,10); }
 function fmtData(d){ if(!d)return''; const[y,m,dd]=d.split('-'); return `${dd}/${m}/${y}`; }
 
+function autoCarryRota(){
+  const hoje = todayStr();
+  const ontem = new Date(); ontem.setDate(ontem.getDate()-1);
+  const ontemStr = ontem.toISOString().slice(0,10);
+  const paradasOntem = getRota(empresaAtual, ontemStr);
+  if(!paradasOntem.length) return;
+  const naoConc = paradasOntem.filter(p=>p.status!=='Concluído'&&p.status!=='Cancelado'&&!p.concluido);
+  if(!naoConc.length) return;
+  let paradasHoje = getRota(empresaAtual, hoje);
+  const idsJaHoje = paradasHoje.map(p=>p.demandaId);
+  let adicionou = false;
+  naoConc.forEach(p=>{
+    if(!idsJaHoje.includes(p.demandaId)){
+      paradasHoje.push({...p, id:Date.now()+Math.random(), status:'Pendente', concluido:false, carregadaAuto:true, status:'Pendente'});
+      adicionou = true;
+    }
+  });
+  if(adicionou) salvarRota(empresaAtual, hoje, paradasHoje);
+}
+
 function renderRota(){
   const e=EMPRESAS[empresaAtual];
   const sel=document.getElementById('rota-data-sel').value||todayStr();
@@ -1665,7 +1685,7 @@ function renderRota(){
     return sep+`<div class="rota-item ${status==='Concluído'?'rota-concluido':''}" style="border-left:3px solid ${corBarra}">
       <div class="rota-ordem" style="background:${corBarra}">${status==='Concluído'?'✓':i+1}</div>
       <div class="rota-body">
-        <div class="rota-cliente">${p.cliente}</div>
+        <div class="rota-cliente">${p.cliente}${p.carregadaAuto?` <span style="background:#FEF3C7;color:#92400E;border-radius:4px;padding:1px 5px;font-size:9px;font-weight:700">↩️ ontem</span>`:''}</div>
         <div class="rota-local">📍 ${p.local}</div>
         <div class="rota-tipo" style="color:${bg}">${icon} ${p.tipo}${p.qtd?' · Qtd: '+p.qtd:''}${p.qtdBobinas?' · 🧻 '+p.qtdBobinas:''}</div>
         ${p.obs?`<div style="font-size:11px;opacity:0.55;margin-top:3px">💬 ${p.obs}</div>`:''}
@@ -2994,9 +3014,41 @@ function renderRolagem(){
   const e = EMPRESAS[0];
   const mesAtual = MESES[new Date().getMonth()];
   const proxMes = MESES[(new Date().getMonth()+1)%12];
+  const idxMesAtual = MESES.indexOf(mesAtual);
   const cartoes = getCartoes();
   const compras = getCompras();
   const fixas = getFixas();
+
+  // Detectar parcelas atrasadas (meses anteriores não pagas)
+  const atrasadas = [];
+  compras.forEach(c=>{
+    const cartao = cartoes.find(x=>x.id===c.cartaoId);
+    c.parcelas.forEach(p=>{
+      if(MESES.indexOf(p.mes)<idxMesAtual){
+        const pago = (c.parcelasPagas||[]).includes(p.num);
+        const rolado = rolagemRolados[c.id+'-'+p.num];
+        if(!pago && !rolado){
+          atrasadas.push({comp:c, parc:p, cartao});
+        }
+      }
+    });
+  });
+
+  const totalAtrasado = atrasadas.reduce((a,x)=>a+(x.parc.valor||0),0);
+  const avisoHTML = atrasadas.length>0?`
+    <div style="background:#FEF2F2;border:1.5px solid #EF4444;border-radius:14px;padding:14px 16px;margin-bottom:12px">
+      <div style="font-size:11px;font-weight:700;color:#EF4444;margin-bottom:8px">⚠️ Atrasados detectados — sugestão automática</div>
+      ${atrasadas.map(({comp,parc,cartao})=>`
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #FEE2E2">
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:600">${comp.desc}</div>
+            <div style="font-size:10px;color:#EF4444">${parc.mes} · ${cartao?cartao.nome:'Sem cartão'} · não pago</div>
+          </div>
+          <div style="font-size:13px;font-weight:700;color:#EF4444">${fmtReal(parc.valor)}</div>
+          <button onclick="rolarParcelaAtrasada(${comp.id},${parc.num})" style="background:#EF444420;color:#EF4444;border:1px solid #EF4444;border-radius:8px;padding:5px 8px;font-size:10px;font-weight:700;cursor:pointer">🔂</button>
+        </div>`).join('')}
+      <button onclick="rolarTodosAtrasados()" style="background:#EF4444;color:#fff;width:100%;margin-top:10px;padding:10px;border-radius:10px;border:none;font-size:12px;font-weight:700;cursor:pointer">🔂 Rolar todos atrasados para ${proxMes}</button>
+    </div>`:'';
 
   if(rolagemTipo==='cartoes'){
     // Build cartao select options
@@ -3022,7 +3074,7 @@ function renderRolagem(){
     // Compras do cartão no mês atual não pagas
     const comprasMes = cartao ? compras.filter(p=>p.cartaoId===cartao.id&&p.parcelas.some(x=>x.mes===mesAtual)) : [];
 
-    document.getElementById('rolagem-content').innerHTML = `
+    document.getElementById('rolagem-content').innerHTML = avisoHTML + `
       <div class="card">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
           <div>
@@ -3093,10 +3145,196 @@ function renderRolagem(){
         ${comprasMes.length===0?`<div style="text-align:center;opacity:0.4;font-size:13px;padding:10px 0">Nenhuma compra em ${mesAtual}</div>`:''}
       </div>`;
   } else if(rolagemTipo==='fixas'){
-    document.getElementById('rolagem-content').innerHTML = `<div class="card"><div class="empty">Em breve — rolagem de fixas</div></div>`;
+    const mesAtualStr = mesAtual;
+    const fixasMes = fixas.filter(f=>f.temporaria&&f.mesesAtivos&&f.mesesAtivos.some(m=>m.startsWith(mesAtualStr)));
+    const totalFixas = fixasMes.reduce((a,f)=>{
+      const pago=(f.mesesPagos||[]).some(m=>m.startsWith(mesAtualStr));
+      const rolado=rolagemRolados['fixa-'+f.id];
+      return a+(!pago&&!rolado?f.valor:0);
+    },0);
+    const pagoFixas = rolagemPago||0;
+    const rolagemFixas = Math.max(0,totalFixas-pagoFixas);
+    const pctPagoF = totalFixas>0?Math.min(100,Math.round((pagoFixas/totalFixas)*100)):0;
+
+    document.getElementById('rolagem-content').innerHTML = avisoHTML + `
+      <div class="card">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+          <div>
+            <label class="form-label">MÊS</label>
+            <input class="form-input" value="${mesAtualStr}" disabled style="opacity:0.6"/>
+          </div>
+          <div>
+            <label class="form-label">QUANTO PAGUEI (R$)</label>
+            <input class="form-input" type="number" placeholder="0,00" value="${pagoFixas||''}" style="border-color:#8B5CF6" oninput="rolagemPago=parseFloat(this.value)||0;renderRolagem()"/>
+          </div>
+        </div>
+        <div style="background:#F5F0FF;border-radius:10px;padding:10px 12px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">
+          <div style="text-align:center"><div style="font-size:9px;color:#888">Total</div><div style="font-size:13px;font-weight:800;color:#8B5CF6">${fmtReal(totalFixas)}</div></div>
+          <div style="font-size:16px;color:#ccc">−</div>
+          <div style="text-align:center"><div style="font-size:9px;color:#888">Paguei</div><div style="font-size:13px;font-weight:800;color:#10B981">${fmtReal(pagoFixas)}</div></div>
+          <div style="font-size:16px;color:#ccc">=</div>
+          <div style="text-align:center"><div style="font-size:9px;color:#888">Rolagem</div><div style="font-size:13px;font-weight:800;color:#EF4444">${fmtReal(rolagemFixas)}</div></div>
+        </div>
+        <div style="margin-bottom:12px">
+          <div style="display:flex;height:12px;border-radius:6px;overflow:hidden;margin-bottom:4px">
+            <div style="width:${pctPagoF}%;background:#10B981;display:flex;align-items:center;justify-content:center">
+              ${pctPagoF>5?`<span style="font-size:9px;color:#fff;font-weight:700">${pctPagoF}%</span>`:''}
+            </div>
+            <div style="width:${100-pctPagoF}%;background:#EF4444;display:flex;align-items:center;justify-content:center">
+              ${(100-pctPagoF)>5?`<span style="font-size:9px;color:#fff;font-weight:700">${100-pctPagoF}%</span>`:''}
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:10px;font-weight:700">
+            <span style="color:#10B981">✅ Pago ${fmtReal(pagoFixas)}</span>
+            <span style="color:#EF4444">🔂 Rolagem ${fmtReal(rolagemFixas)}</span>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <span style="font-size:12px;font-weight:700;color:#888">${mesAtualStr} → ${proxMes}</span>
+          <button onclick="rolarTodasFixas()" style="background:#8B5CF6;color:#fff;border:none;border-radius:10px;padding:7px 12px;font-size:11px;font-weight:700;cursor:pointer">🔂 Rolar tudo</button>
+        </div>
+        ${fixasMes.map(f=>{
+          const pago=(f.mesesPagos||[]).some(m=>m.startsWith(mesAtualStr));
+          const rolado=rolagemRolados['fixa-'+f.id];
+          return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f5f5f5;${rolado?'opacity:0.65':''}">
+            <div style="width:20px;height:20px;border-radius:6px;border:2px solid ${rolado?'#10B981':'#8B5CF6'};background:${rolado?'#10B981':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;color:${rolado?'#fff':'#8B5CF6'}">${rolado?'🔂':''}</div>
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:600">${f.desc}</div>
+              <div style="font-size:10px;opacity:0.5">${f.temporaria?((f.duracao||0)-(f.mesesPagos||[]).length)+' meses restantes':'Permanente'}</div>
+            </div>
+            ${rolado?`<span style="background:#DCFCE7;color:#10B981;border-radius:6px;padding:3px 8px;font-size:10px;font-weight:700;margin-right:4px">🔂 rolado</span>`:''}
+            <div style="font-size:13px;font-weight:700;color:${rolado?'#10B981':'#8B5CF6'}">${fmtReal(f.valor)}</div>
+            ${!rolado&&!pago?`<button onclick="rolarFixa(${f.id})" style="background:#8B5CF620;color:#8B5CF6;border:1px solid #8B5CF6;border-radius:8px;padding:5px 8px;font-size:10px;font-weight:700;cursor:pointer">🔂</button>`:''}
+          </div>`;
+        }).join('')}
+        ${fixasMes.length===0?`<div style="text-align:center;opacity:0.4;font-size:13px;padding:10px 0">Nenhuma fixa em ${mesAtualStr}</div>`:''}
+      </div>`;
+
   } else {
-    document.getElementById('rolagem-content').innerHTML = `<div class="card"><div class="empty">Em breve — rolagem de compras avulsas</div></div>`;
+    // Compras com cartão
+    const comprasMesCartao = compras.filter(c=>c.cartaoId&&c.parcelas.some(p=>p.mes===mesAtual));
+    const totalCompras = comprasMesCartao.reduce((a,c)=>{
+      const parc=c.parcelas.find(p=>p.mes===mesAtual);
+      const pago=parc&&(c.parcelasPagas||[]).includes(parc.num);
+      const rolado=rolagemRolados[c.id];
+      return a+(!pago&&!rolado?(parc?parc.valor:0):0);
+    },0);
+    const pagoComp = rolagemPago||0;
+    const rolagemComp = Math.max(0,totalCompras-pagoComp);
+    const pctPagoC = totalCompras>0?Math.min(100,Math.round((pagoComp/totalCompras)*100)):0;
+    const cartaoSel = cartoes.find(c=>c.id==rolagemCartaoId)||cartoes[0];
+    const cartaoOptions = cartoes.map(c=>`<option value="${c.id}" ${c.id==rolagemCartaoId?'selected':''}>${c.nome}</option>`).join('');
+
+    document.getElementById('rolagem-content').innerHTML = avisoHTML + `
+      <div class="card">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+          <div>
+            <label class="form-label">CARTÃO</label>
+            <select class="form-input" onchange="rolagemCartaoId=parseInt(this.value);rolagemPago=0;renderRolagem()">${cartaoOptions}</select>
+          </div>
+          <div>
+            <label class="form-label">QUANTO PAGUEI (R$)</label>
+            <input class="form-input" type="number" placeholder="0,00" value="${pagoComp||''}" style="border-color:#8B5CF6" oninput="rolagemPago=parseFloat(this.value)||0;renderRolagem()"/>
+          </div>
+        </div>
+        <div style="background:#F5F0FF;border-radius:10px;padding:10px 12px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">
+          <div style="text-align:center"><div style="font-size:9px;color:#888">Total</div><div style="font-size:13px;font-weight:800;color:#8B5CF6">${fmtReal(totalCompras)}</div></div>
+          <div style="font-size:16px;color:#ccc">−</div>
+          <div style="text-align:center"><div style="font-size:9px;color:#888">Paguei</div><div style="font-size:13px;font-weight:800;color:#10B981">${fmtReal(pagoComp)}</div></div>
+          <div style="font-size:16px;color:#ccc">=</div>
+          <div style="text-align:center"><div style="font-size:9px;color:#888">Rolagem</div><div style="font-size:13px;font-weight:800;color:#EF4444">${fmtReal(rolagemComp)}</div></div>
+        </div>
+        <div style="margin-bottom:12px">
+          <div style="display:flex;height:12px;border-radius:6px;overflow:hidden;margin-bottom:4px">
+            <div style="width:${pctPagoC}%;background:#10B981;display:flex;align-items:center;justify-content:center">
+              ${pctPagoC>5?`<span style="font-size:9px;color:#fff;font-weight:700">${pctPagoC}%</span>`:''}
+            </div>
+            <div style="width:${100-pctPagoC}%;background:#EF4444;display:flex;align-items:center;justify-content:center">
+              ${(100-pctPagoC)>5?`<span style="font-size:9px;color:#fff;font-weight:700">${100-pctPagoC}%</span>`:''}
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:10px;font-weight:700">
+            <span style="color:#10B981">✅ Pago ${fmtReal(pagoComp)}</span>
+            <span style="color:#EF4444">🔂 Rolagem ${fmtReal(rolagemComp)}</span>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <span style="font-size:12px;font-weight:700;color:#888">${mesAtual} → ${proxMes}</span>
+          <button onclick="rolarTudoCartao()" style="background:#8B5CF6;color:#fff;border:none;border-radius:10px;padding:7px 12px;font-size:11px;font-weight:700;cursor:pointer">🔂 Rolar tudo</button>
+        </div>
+        ${comprasMesCartao.filter(c=>!rolagemCartaoId||c.cartaoId==rolagemCartaoId).map(c=>{
+          const parc=c.parcelas.find(p=>p.mes===mesAtual);
+          const pago=parc&&(c.parcelasPagas||[]).includes(parc.num);
+          const rolado=rolagemRolados[c.id];
+          const cartao=cartoes.find(x=>x.id===c.cartaoId);
+          return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f5f5f5;${rolado?'opacity:0.65':''}">
+            <div style="width:20px;height:20px;border-radius:6px;border:2px solid ${rolado?'#10B981':'#8B5CF6'};background:${rolado?'#10B981':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;color:${rolado?'#fff':'#8B5CF6'}">${rolado?'🔂':''}</div>
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:600">${c.desc}</div>
+              <div style="font-size:10px;opacity:0.5">${parc?parc.num+'/'+c.nParcelas+' parcela':''} · ${cartao?cartao.nome:''}</div>
+            </div>
+            ${rolado?`<span style="background:#DCFCE7;color:#10B981;border-radius:6px;padding:3px 8px;font-size:10px;font-weight:700;margin-right:4px">🔂 rolado</span>`:''}
+            <div style="font-size:13px;font-weight:700;color:${rolado?'#10B981':'#8B5CF6'}">${fmtReal(parc?parc.valor:0)}</div>
+            ${!rolado?`<button onclick="rolarCompra(${c.id})" style="background:#8B5CF620;color:#8B5CF6;border:1px solid #8B5CF6;border-radius:8px;padding:5px 8px;font-size:10px;font-weight:700;cursor:pointer">🔂</button>`:''}
+          </div>`;
+        }).join('')}
+      </div>`;
   }
+}
+
+function rolarFixa(fixaId){
+  const mesAtual = MESES[new Date().getMonth()];
+  const proxMes = MESES[(new Date().getMonth()+1)%12];
+  let fixas = getFixas();
+  const fixa = fixas.find(f=>f.id===fixaId);
+  if(!fixa||!fixa.mesesAtivos) return;
+  // Add proxMes to mesesAtivos if not already there
+  const mesAnoProx = `${proxMes}/${new Date().getFullYear()}`;
+  if(!fixa.mesesAtivos.includes(mesAnoProx)){
+    fixa.mesesAtivos = [...fixa.mesesAtivos, mesAnoProx];
+  }
+  rolagemRolados['fixa-'+fixaId] = true;
+  salvarFixas(fixas);
+  renderRolagem();
+}
+
+function rolarTodasFixas(){
+  const mesAtual = MESES[new Date().getMonth()];
+  const fixas = getFixas();
+  fixas.filter(f=>f.temporaria&&f.mesesAtivos&&f.mesesAtivos.some(m=>m.startsWith(mesAtual))).forEach(f=>{
+    const pago=(f.mesesPagos||[]).some(m=>m.startsWith(mesAtual));
+    if(!pago&&!rolagemRolados['fixa-'+f.id]) rolarFixa(f.id);
+  });
+}
+
+function rolarParcelaAtrasada(compId, numParcela){
+  const proxMes = MESES[(new Date().getMonth()+1)%12];
+  let compras = getCompras();
+  const comp = compras.find(c=>c.id===compId);
+  if(!comp) return;
+  const parc = comp.parcelas.find(p=>p.num===numParcela);
+  if(!parc) return;
+  // Add extra parcela in proxMes
+  comp.parcelas = [...comp.parcelas, {...parc, mes:proxMes, rolado:true}];
+  rolagemRolados[compId+'-'+numParcela] = true;
+  salvarCompras(compras);
+  renderRolagem();
+  renderDFPainel();
+}
+
+function rolarTodosAtrasados(){
+  const mesAtual = MESES[new Date().getMonth()];
+  const idxMesAtual = MESES.indexOf(mesAtual);
+  const compras = getCompras();
+  compras.forEach(c=>{
+    c.parcelas.forEach(p=>{
+      if(MESES.indexOf(p.mes)<idxMesAtual){
+        const pago = (c.parcelasPagas||[]).includes(p.num);
+        const rolado = rolagemRolados[c.id+'-'+p.num];
+        if(!pago && !rolado) rolarParcelaAtrasada(c.id, p.num);
+      }
+    });
+  });
 }
 
 function rolarCompra(compId){
@@ -3130,17 +3368,17 @@ function rolarTudoCartao(){
 }
 
 function toggleMilagreDetalhe(tipo){
-  const cartoes = document.getElementById('milagre-det-cartoes');
-  const fixas = document.getElementById('milagre-det-fixas');
-  if(!cartoes||!fixas) return;
+  const elCartoes = document.getElementById('milagre-det-cartoes');
+  const elFixas = document.getElementById('milagre-det-fixas');
+  if(!elCartoes||!elFixas) return;
   if(tipo==='cartoes'){
-    const vis = cartoes.style.display!=='none';
-    cartoes.style.display = vis?'none':'block';
-    fixas.style.display = 'none';
+    const vis = elCartoes.style.display!=='none';
+    elCartoes.style.display = vis?'none':'block';
+    elFixas.style.display = 'none';
   } else {
-    const vis = fixas.style.display!=='none';
-    fixas.style.display = vis?'none':'block';
-    cartoes.style.display = 'none';
+    const vis = elFixas.style.display!=='none';
+    elFixas.style.display = vis?'none':'block';
+    elCartoes.style.display = 'none';
   }
 }
 
