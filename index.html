@@ -458,6 +458,19 @@
     <div id="lista-df-renda"></div>
   </div>
 
+  <!-- ROLAGEM -->
+  <div id="page-df-rolagem" class="page">
+    <div class="top-bar">
+      <div><h1>🔂 Rolagem</h1><div class="subtitle" style="margin-bottom:0">Role dívidas para o próximo mês</div></div>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:12px" id="rolagem-tabs">
+      <button onclick="setRolagemTipo('cartoes')" id="rtab-cartoes" style="flex:1;padding:10px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;background:#8B5CF6;color:#fff;border:none">💳 Cartões</button>
+      <button onclick="setRolagemTipo('fixas')" id="rtab-fixas" style="flex:1;padding:10px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;background:#f0f0f0;color:#888;border:none">📋 Fixas</button>
+      <button onclick="setRolagemTipo('compras')" id="rtab-compras" style="flex:1;padding:10px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;background:#f0f0f0;color:#888;border:none">🛒 Compras</button>
+    </div>
+    <div id="rolagem-content"></div>
+  </div>
+
   <!-- MILAGRE -->
   <div id="page-df-milagre" class="page">
     <div class="top-bar">
@@ -1036,6 +1049,7 @@ const ABAS_EMP = [
     {id:'df-gasolina',   label:'⛽️ Gasolina'},
     {id:'df-fixas',      label:'📋 Fixas'},
     {id:'df-renda',      label:'💶 Renda'},
+    {id:'df-rolagem',    label:'🔂 Rolagem'},
     {id:'df-milagre',    label:'🙏 Milagre'},
   ],
   [ // OPAY
@@ -1095,6 +1109,7 @@ function navTo(page,noReset){
   if(page==='df-compras'){ renderCompras(); popularSelectCartoes(); }
   if(page==='df-fixas') renderFixas();
   if(page==='df-milagre') renderMilagre();
+  if(page==='df-rolagem') renderRolagem();
   if(page==='df-renda') renderRenda();
   if(page==='df-gasolina') renderGasolina();
   if(page==='condicao') renderCondicao();
@@ -1508,7 +1523,7 @@ function renderPainel(){
       </div>
     </div>`;
   // ===== DEMANDAS DONUT =====
-  const dems = getDemandas ? getDemandas() : (JSON.parse(localStorage.getItem('log_dem_'+empresaAtual)||'[]'));
+  const dems = getDemandas(empresaAtual);
   const dConcluidas = dems.filter(d=>d.status==='Concluída').length;
   const dAndamento  = dems.filter(d=>d.status==='Em andamento').length;
   const dPendentes  = dems.filter(d=>d.status==='Pendente').length;
@@ -2550,6 +2565,14 @@ function renderCartoes(){
     const limiteDisp=c.limite>0?Math.max(0,c.limite-totalComprometido):null;
     const pctUsado=c.limite>0?Math.min(100,Math.round((totalComprometido/c.limite)*100)):0;
     const corBarra=pctUsado>80?'#EF4444':pctUsado>50?'#F59E0B':c.cor;
+    // Atrasado - meses anteriores não pagos
+    const idxMesAtualC=MESES.indexOf(mesAtual);
+    const totalAtrasadoC=compras.filter(p=>p.cartaoId===c.id).reduce((a,p)=>{
+      return a+p.parcelas.filter(parc=>MESES.indexOf(parc.mes)<idxMesAtualC).reduce((b,parc)=>{
+        const pg=(p.parcelasPagas||[]).includes(parc.num);
+        return b+(pg?0:parc.valor);
+      },0);
+    },0);
 
     const openCard = cartaoAberto===c.id;
     // Mês filtrado para este cartão
@@ -2604,6 +2627,21 @@ function renderCartoes(){
       <div style="display:flex;justify-content:space-between;margin-top:5px">
         <div style="font-size:10px;opacity:0.5">${pctUsado}% comprometido · ${fmtReal(totalComprometido)}</div>
         <div style="font-size:11px;font-weight:700;color:#10B981">💳 ${fmtReal(limiteDisp)}</div>
+      </div>`:''}
+      ${totalAtrasadoC>0?`
+      <div style="margin-top:8px;background:#FEF2F2;border-radius:8px;padding:8px 10px">
+        <div style="display:flex;justify-content:space-between;padding:3px 0">
+          <span style="font-size:11px;color:#EF4444;font-weight:600">⚠️ Atrasado</span>
+          <span style="font-size:12px;font-weight:800;color:#EF4444">${fmtReal(totalAtrasadoC)}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:3px 0">
+          <span style="font-size:11px;color:${c.cor};font-weight:600">${mesAtual}</span>
+          <span style="font-size:12px;font-weight:800;color:${c.cor}">${fmtReal(gastoMes)}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:4px 0;border-top:1px solid #FECACA;margin-top:2px">
+          <span style="font-size:11px;font-weight:700;color:#1A1A2E">Total em aberto</span>
+          <span style="font-size:13px;font-weight:900;color:#1A1A2E">${fmtReal(totalComprometido)}</span>
+        </div>
       </div>`:''}
       ${listaCompras}
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:12px" onclick="event.stopPropagation()">
@@ -2934,28 +2972,210 @@ function togglePagamentoFixa(id, mesAno){
 }
 
 
+
+let rolagemTipo = 'cartoes';
+let rolagemPago = 0;
+let rolagemCartaoId = null;
+let rolagemRolados = {}; // {compraId: true}
+
+function setRolagemTipo(tipo){
+  rolagemTipo = tipo;
+  ['cartoes','fixas','compras'].forEach(t=>{
+    const btn = document.getElementById('rtab-'+t);
+    if(btn){
+      btn.style.background = t===tipo?'#8B5CF6':'#f0f0f0';
+      btn.style.color = t===tipo?'#fff':'#888';
+    }
+  });
+  renderRolagem();
+}
+
+function renderRolagem(){
+  const e = EMPRESAS[0];
+  const mesAtual = MESES[new Date().getMonth()];
+  const proxMes = MESES[(new Date().getMonth()+1)%12];
+  const cartoes = getCartoes();
+  const compras = getCompras();
+  const fixas = getFixas();
+
+  if(rolagemTipo==='cartoes'){
+    // Build cartao select options
+    const cartaoOptions = cartoes.map(c=>`<option value="${c.id}" ${c.id==rolagemCartaoId?'selected':''}>${c.nome}</option>`).join('');
+    
+    // Get selected cartao
+    const cartao = cartoes.find(c=>c.id==rolagemCartaoId) || cartoes[0];
+    if(!rolagemCartaoId && cartao) rolagemCartaoId = cartao.id;
+
+    // Total do cartão (parcelas não pagas mês atual)
+    const totalCartao = cartao ? compras.filter(p=>p.cartaoId===cartao.id).reduce((a,c)=>{
+      const parc = c.parcelas.find(p=>p.mes===mesAtual);
+      if(!parc) return a;
+      const pago = (c.parcelasPagas||[]).includes(parc.num);
+      return a + (pago?0:parc.valor);
+    },0) : 0;
+
+    const pago = rolagemPago || 0;
+    const rolagem = Math.max(0, totalCartao - pago);
+    const pctPago = totalCartao>0?Math.min(100,Math.round((pago/totalCartao)*100)):0;
+    const pctRol = 100 - pctPago;
+
+    // Compras do cartão no mês atual não pagas
+    const comprasMes = cartao ? compras.filter(p=>p.cartaoId===cartao.id&&p.parcelas.some(x=>x.mes===mesAtual)) : [];
+
+    document.getElementById('rolagem-content').innerHTML = `
+      <div class="card">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+          <div>
+            <label class="form-label">CARTÃO</label>
+            <select class="form-input" onchange="rolagemCartaoId=parseInt(this.value);rolagemPago=0;renderRolagem()">
+              ${cartaoOptions}
+            </select>
+          </div>
+          <div>
+            <label class="form-label">QUANTO PAGUEI (R$)</label>
+            <input class="form-input" type="number" placeholder="0,00" value="${pago||''}" style="border-color:#8B5CF6" oninput="rolagemPago=parseFloat(this.value)||0;renderRolagem()"/>
+          </div>
+        </div>
+
+        <!-- Resumo -->
+        <div style="background:#F5F0FF;border-radius:10px;padding:10px 12px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">
+          <div style="text-align:center">
+            <div style="font-size:9px;color:#888">Total</div>
+            <div style="font-size:13px;font-weight:800;color:#8B5CF6">${fmtReal(totalCartao)}</div>
+          </div>
+          <div style="font-size:16px;color:#ccc">−</div>
+          <div style="text-align:center">
+            <div style="font-size:9px;color:#888">Paguei</div>
+            <div style="font-size:13px;font-weight:800;color:#10B981">${fmtReal(pago)}</div>
+          </div>
+          <div style="font-size:16px;color:#ccc">=</div>
+          <div style="text-align:center">
+            <div style="font-size:9px;color:#888">Rolagem</div>
+            <div style="font-size:13px;font-weight:800;color:#EF4444">${fmtReal(rolagem)}</div>
+          </div>
+        </div>
+
+        <!-- Barra % -->
+        <div style="margin-bottom:12px">
+          <div style="display:flex;height:12px;border-radius:6px;overflow:hidden;margin-bottom:4px">
+            <div style="width:${pctPago}%;background:#10B981;display:flex;align-items:center;justify-content:center;min-width:${pctPago>0?'24px':'0'}">
+              ${pctPago>5?`<span style="font-size:9px;color:#fff;font-weight:700">${pctPago}%</span>`:''}
+            </div>
+            <div style="width:${pctRol}%;background:#EF4444;display:flex;align-items:center;justify-content:center;min-width:${pctRol>0?'24px':'0'}">
+              ${pctRol>5?`<span style="font-size:9px;color:#fff;font-weight:700">${pctRol}%</span>`:''}
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:10px;font-weight:700">
+            <span style="color:#10B981">✅ Pago ${fmtReal(pago)}</span>
+            <span style="color:#EF4444">🔂 Rolagem ${fmtReal(rolagem)}</span>
+          </div>
+        </div>
+
+        <!-- Lista -->
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <span style="font-size:12px;font-weight:700;color:#888">${mesAtual} → ${proxMes}</span>
+          <button onclick="rolarTudoCartao()" style="background:#8B5CF6;color:#fff;border:none;border-radius:10px;padding:7px 12px;font-size:11px;font-weight:700;cursor:pointer">🔂 Rolar tudo</button>
+        </div>
+        ${comprasMes.map(c=>{
+          const parc = c.parcelas.find(p=>p.mes===mesAtual);
+          const rolado = rolagemRolados[c.id];
+          return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f5f5f5;${rolado?'opacity:0.65':''}">
+            <div style="width:20px;height:20px;border-radius:6px;border:2px solid ${rolado?'#10B981':'#8B5CF6'};background:${rolado?'#10B981':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;color:${rolado?'#fff':'#8B5CF6'}">${rolado?'🔂':''}</div>
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:600">${c.desc}</div>
+              <div style="font-size:10px;opacity:0.5">${parc?parc.num+'/'+c.nParcelas+' parcela':''}${cartao?' · '+cartao.nome:''}</div>
+            </div>
+            ${rolado?`<span style="background:#DCFCE7;color:#10B981;border-radius:6px;padding:3px 8px;font-size:10px;font-weight:700;margin-right:4px">🔂 rolado</span>`:''}
+            <div style="font-size:13px;font-weight:700;color:${rolado?'#10B981':'#8B5CF6'}">${fmtReal(parc?parc.valor:0)}</div>
+            ${!rolado?`<button onclick="rolarCompra(${c.id})" style="background:#8B5CF620;color:#8B5CF6;border:1px solid #8B5CF6;border-radius:8px;padding:5px 8px;font-size:10px;font-weight:700;cursor:pointer">🔂</button>`:''}
+          </div>`;
+        }).join('')}
+        ${comprasMes.length===0?`<div style="text-align:center;opacity:0.4;font-size:13px;padding:10px 0">Nenhuma compra em ${mesAtual}</div>`:''}
+      </div>`;
+  } else if(rolagemTipo==='fixas'){
+    document.getElementById('rolagem-content').innerHTML = `<div class="card"><div class="empty">Em breve — rolagem de fixas</div></div>`;
+  } else {
+    document.getElementById('rolagem-content').innerHTML = `<div class="card"><div class="empty">Em breve — rolagem de compras avulsas</div></div>`;
+  }
+}
+
+function rolarCompra(compId){
+  const mesAtual = MESES[new Date().getMonth()];
+  const proxMes = MESES[(new Date().getMonth()+1)%12];
+  let compras = getCompras();
+  const comp = compras.find(c=>c.id===compId);
+  if(!comp) return;
+  // Encontra parcela do mês atual
+  const parc = comp.parcelas.find(p=>p.mes===mesAtual);
+  if(!parc) return;
+  // Adiciona parcela extra no próximo mês
+  const novaParc = {...parc, mes:proxMes, num:parc.num, rolado:true};
+  comp.parcelas = [...comp.parcelas, novaParc];
+  // Marca como rolado
+  rolagemRolados[compId] = true;
+  salvarCompras(compras);
+  renderRolagem();
+  renderDFPainel();
+}
+
+function rolarTudoCartao(){
+  const mesAtual = MESES[new Date().getMonth()];
+  const cartoes = getCartoes();
+  const cartao = cartoes.find(c=>c.id==rolagemCartaoId);
+  if(!cartao) return;
+  const compras = getCompras();
+  compras.filter(p=>p.cartaoId===cartao.id&&p.parcelas.some(x=>x.mes===mesAtual)).forEach(c=>{
+    rolarCompra(c.id);
+  });
+}
+
+function toggleMilagreDetalhe(tipo){
+  const cartoes = document.getElementById('milagre-det-cartoes');
+  const fixas = document.getElementById('milagre-det-fixas');
+  if(!cartoes||!fixas) return;
+  if(tipo==='cartoes'){
+    const vis = cartoes.style.display!=='none';
+    cartoes.style.display = vis?'none':'block';
+    fixas.style.display = 'none';
+  } else {
+    const vis = fixas.style.display!=='none';
+    fixas.style.display = vis?'none':'block';
+    cartoes.style.display = 'none';
+  }
+}
+
 function renderMilagre(){
   const cartoes = getCartoes();
   const compras = getCompras();
   const fixas = getFixas();
   const e = EMPRESAS[0];
 
-  // Total cartoes - todas parcelas nao pagas
-  const totalCartoes = compras.reduce((a,c)=>{
-    return a + c.parcelas.reduce((b,p)=>{
-      const pago = (c.parcelasPagas||[]).includes(p.num);
-      return b + (pago ? 0 : p.valor);
+  // Total por cartão - parcelas não pagas
+  const totalPorCartao = cartoes.map(c=>{
+    const total = compras.filter(x=>x.cartaoId===c.id).reduce((a,comp)=>{
+      return a + comp.parcelas.reduce((b,p)=>{
+        const pago = (comp.parcelasPagas||[]).includes(p.num);
+        return b + (pago ? 0 : p.valor);
+      },0);
     },0);
-  },0);
+    return {...c, total};
+  }).filter(c=>c.total>0);
 
-  // Total fixas restantes
-  const totalFixas = fixas.reduce((a,f)=>{
-    if(!f.temporaria) return a + f.valor * 12; // permanente: 12 meses
-    const pagos = (f.mesesPagos||[]).length;
-    const restantes = (f.duracao||0) - pagos;
-    return a + (restantes > 0 ? restantes * f.valor : 0);
-  },0);
+  const totalCartoes = totalPorCartao.reduce((a,c)=>a+c.total,0);
 
+  // Total por fixa
+  const totalPorFixa = fixas.map(f=>{
+    let total;
+    if(!f.temporaria){ total = f.valor * 12; }
+    else {
+      const pagos = (f.mesesPagos||[]).length;
+      const restantes = (f.duracao||0) - pagos;
+      total = restantes > 0 ? restantes * f.valor : 0;
+    }
+    return {...f, total};
+  }).filter(f=>f.total>0);
+
+  const totalFixas = totalPorFixa.reduce((a,f)=>a+f.total,0);
   const total = totalCartoes + totalFixas;
 
   document.getElementById('milagre-card').innerHTML = `
@@ -2963,19 +3183,41 @@ function renderMilagre(){
       <div style="font-size:11px;color:#EF4444;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">MILAGRE</div>
       <div style="font-size:36px;font-weight:900;color:#fff">${fmtReal(total)}</div>
       <div style="border-top:1px solid #EF444440;margin-top:14px;padding-top:14px;display:flex;justify-content:center;gap:0">
-        <div style="flex:1;text-align:center;border-right:1px solid #EF444440;padding-right:12px">
+        <div onclick="toggleMilagreDetalhe('cartoes')" style="flex:1;text-align:center;border-right:1px solid #EF444440;padding-right:12px;cursor:pointer">
           <div style="font-size:10px;color:#888;margin-bottom:4px">CARTOES</div>
           <div style="font-size:22px;font-weight:900;color:#fff">${fmtReal(totalCartoes)}</div>
+          <div style="font-size:9px;color:#EF4444;margin-top:3px">▾ ver detalhes</div>
         </div>
-        <div style="flex:1;text-align:center;padding-left:12px">
+        <div onclick="toggleMilagreDetalhe('fixas')" style="flex:1;text-align:center;padding-left:12px;cursor:pointer">
           <div style="font-size:10px;color:#888;margin-bottom:4px">FIXAS</div>
           <div style="font-size:22px;font-weight:900;color:#fff">${fmtReal(totalFixas)}</div>
+          <div style="font-size:9px;color:#EF4444;margin-top:3px">▾ ver detalhes</div>
         </div>
       </div>
     </div>
-    <div style="background:#fff;border-radius:14px;padding:14px;font-size:12px;color:#888;text-align:center;line-height:1.6">
-      Cartoes: ${compras.length} compras em aberto<br>
-      Fixas: ${fixas.length} despesas cadastradas
+
+    <!-- Detalhe Cartoes -->
+    <div id="milagre-det-cartoes" style="display:none;background:#fff;border-radius:14px;padding:14px;margin-bottom:10px;border-left:3px solid #EF4444">
+      <div style="font-size:11px;font-weight:700;color:#EF4444;margin-bottom:10px;text-transform:uppercase">Cartões em aberto</div>
+      ${totalPorCartao.map(c=>`
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f5f5f5">
+          <div style="width:10px;height:10px;border-radius:50%;background:${c.cor};flex-shrink:0"></div>
+          <div style="flex:1;font-size:13px;font-weight:600">${c.nome}</div>
+          <div style="font-size:13px;font-weight:800;color:${c.cor}">${fmtReal(c.total)}</div>
+        </div>`).join('')}
+      ${totalPorCartao.length===0?'<div style="text-align:center;opacity:0.4;font-size:13px">Nenhum saldo em aberto</div>':''}
+    </div>
+
+    <!-- Detalhe Fixas -->
+    <div id="milagre-det-fixas" style="display:none;background:#fff;border-radius:14px;padding:14px;margin-bottom:10px;border-left:3px solid #DC2626">
+      <div style="font-size:11px;font-weight:700;color:#DC2626;margin-bottom:10px;text-transform:uppercase">Fixas restantes</div>
+      ${totalPorFixa.map(f=>`
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f5f5f5">
+          <div style="flex:1;font-size:13px;font-weight:600">${f.desc}</div>
+          <div style="font-size:11px;color:#888;margin-right:4px">${f.temporaria?((f.duracao||0)-(f.mesesPagos||[]).length)+'x restantes':'12x/ano'}</div>
+          <div style="font-size:13px;font-weight:800;color:#DC2626">${fmtReal(f.total)}</div>
+        </div>`).join('')}
+      ${totalPorFixa.length===0?'<div style="text-align:center;opacity:0.4;font-size:13px">Nenhuma fixa cadastrada</div>':''}
     </div>
   `;
 }
@@ -3277,6 +3519,15 @@ function renderDFPainel(){
     const totalComp=getCompras().filter(p=>p.cartaoId===c.id).reduce((a,p)=>a+p.parcelas.reduce((b,parc)=>{
       const pg=(p.parcelasPagas||[]).includes(parc.num); return b+(pg?0:parc.valor);},0),0);
     const dispLimite=c.limite>0?Math.max(0,c.limite-totalComp):null;
+    // Calcular atrasado (meses anteriores não pagos)
+    const mesAtualStr=MESES[new Date().getMonth()];
+    const idxMesAtual=MESES.indexOf(mesAtualStr);
+    const totalAtrasado=getCompras().filter(p=>p.cartaoId===c.id).reduce((a,p)=>{
+      return a+p.parcelas.filter(parc=>MESES.indexOf(parc.mes)<idxMesAtual).reduce((b,parc)=>{
+        const pg=(p.parcelasPagas||[]).includes(parc.num);
+        return b+(pg?0:parc.valor);
+      },0);
+    },0);
     return `<div onclick="irParaCartao(${c.id})" style="background:#F5F0FF;border-radius:12px;padding:10px 12px;cursor:pointer;transition:opacity 0.2s" onmousedown="this.style.opacity='0.7'" onmouseup="this.style.opacity='1'">
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
         <div style="width:8px;height:8px;border-radius:50%;background:${c.cor};flex-shrink:0"></div>
@@ -3285,7 +3536,7 @@ function renderDFPainel(){
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;padding-left:14px">
         ${dispLimite!==null?`<div style="font-size:9px;font-weight:700;color:#10B981">💳 ${fmtReal(dispLimite)}</div>`:'<div></div>'}
-        <div style="font-size:10px;color:#aaa;font-weight:700">${pct}%</div>
+        ${totalAtrasado>0?`<span style="background:#FEE2E2;color:#EF4444;border-radius:4px;padding:1px 5px;font-size:9px;font-weight:700">⚠️ ${fmtReal(totalAtrasado)}</span>`:`<div style="font-size:10px;color:#aaa;font-weight:700">${pct}%</div>`}
         ${diasVenc?`<div style="font-size:11px;font-weight:700;color:${corVenc}">${diasVenc}</div>`:'<div></div>'}
       </div>
     </div>`;
@@ -3882,4 +4133,3 @@ renderPainel();
 </script>
 </body>
 </html>
- 
