@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
@@ -205,6 +205,10 @@
     }
     #toast-compra-title { font-size:13px; font-weight:700; }
     #toast-compra-sub { font-size:11px; opacity:0.9; margin-left:4px; }
+    @keyframes roadMove { from{transform:translateX(0) translateY(-50%)} to{transform:translateX(-60px) translateY(-50%)} }
+    @keyframes carBounce { from{transform:translate(-50%,-55%)} to{transform:translate(-50%,-45%)} }
+    @keyframes popIn { from{transform:scale(0);opacity:0} to{transform:scale(1);opacity:1} }
+    #km-car-anim.show { display:flex!important; }
   </style>
 </head>
 <body>
@@ -266,9 +270,26 @@
       <button class="emp-btn active" onclick="trocarEmpresa(0)" id="eb-0">DE FELIPPE</button>
       <button class="emp-btn" onclick="trocarEmpresa(1)" id="eb-1">OPAY</button>
       <button class="emp-btn" onclick="trocarEmpresa(2)" id="eb-2">UBER</button>
+      <button onclick="toggleConfig()" style="padding:6px 10px;border-radius:20px;border:2px solid rgba(255,255,255,0.3);color:rgba(255,255,255,0.75);background:transparent;font-size:13px;cursor:pointer;flex-shrink:0;line-height:1">⚙️</button>
     </div>
   </div>
   <div class="nav-tabs" id="nav-tabs"></div>
+</div>
+
+<!-- Config Modal -->
+<div id="config-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9998;align-items:flex-end;justify-content:center">
+  <div style="background:#F3F0FF;border-radius:20px 20px 0 0;padding:20px 23px 32px;width:100%;max-width:480px">
+    <div style="font-size:16px;font-weight:800;margin-bottom:14px;text-align:center">⚙️ Configurações</div>
+    <div style="background:#fff;border-radius:14px;padding:16px;margin-bottom:10px">
+      <button onclick="exportarDados()" style="width:100%;padding:14px;border-radius:12px;border:1.5px solid #10B981;background:#10B98115;color:#10B981;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:10px">📤 Exportar todos os dados</button>
+      <label style="width:100%;display:block">
+        <div style="padding:14px;border-radius:12px;border:1.5px solid #3B82F6;background:#3B82F615;color:#3B82F6;font-size:13px;font-weight:700;cursor:pointer;text-align:center">📥 Importar dados</div>
+        <input type="file" accept=".json" onchange="importarDados(event)" style="display:none"/>
+      </label>
+      <div style="font-size:10px;color:#aaa;text-align:center;margin-top:8px">⚠️ Importar substitui todos os dados atuais</div>
+    </div>
+    <button onclick="toggleConfig()" style="width:100%;padding:13px;border-radius:12px;border:none;background:#fff;color:#888;font-size:13px;font-weight:700;cursor:pointer">Fechar</button>
+  </div>
 </div>
 
 <div class="main">
@@ -861,15 +882,76 @@
     <div class="top-bar">
       <div><h1>🚗 KM do Dia</h1><div class="subtitle" style="margin-bottom:0">Registre os km e corridas do dia</div></div>
     </div>
-    <div class="card" style="padding:20px;margin-bottom:16px">
-      <h3 style="font-size:14px;font-weight:700;margin-bottom:14px">➕ Adicionar Registro do Dia</h3>
-      <div class="grid-2" style="margin-bottom:12px">
-        <div><label class="form-label">Data</label><input class="form-input" type="date" id="km-data" /></div>
-        <div><label class="form-label">KM Rodados</label><input class="form-input" type="number" id="km-valor" placeholder="" min="0" /></div>
-        <div style="grid-column:1/-1"><label class="form-label">Corridas do Dia</label><input class="form-input" type="number" id="km-corridas" placeholder="" min="0" /></div>
+
+    <!-- Botão Iniciar Dia -->
+    <div id="km-iniciar-wrap" class="card" style="padding:20px;margin-bottom:16px;text-align:center">
+      <div style="font-size:32px;margin-bottom:8px">🚗</div>
+      <div style="font-size:14px;font-weight:700;margin-bottom:4px">Pronto para rodar?</div>
+      <div style="font-size:12px;opacity:0.5;margin-bottom:14px">Coloque o KM inicial do odômetro</div>
+      <div style="display:flex;gap:10px;margin-bottom:12px">
+        <div style="flex:1">
+          <label class="form-label">DATA</label>
+          <input class="form-input" type="date" id="km-data"/>
+        </div>
+        <div style="flex:1">
+          <label class="form-label">KM INICIAL</label>
+          <input class="form-input" type="number" id="km-inicial" placeholder="Ex: 27000" min="0"/>
+        </div>
       </div>
-      <button class="btn-primary" id="km-btn" onclick="salvarKm()">✅ Salvar</button>
+      <button class="btn-primary" onclick="iniciarDiaKm()" style="background:linear-gradient(135deg,#065F46,#10B981)">🟢 Iniciar Dia</button>
     </div>
+
+    <!-- Card Encerrar Dia (hidden initially) -->
+    <div id="km-encerrar-wrap" class="card" style="padding:20px;margin-bottom:16px;display:none">
+      <div style="background:#10B98115;border:1px solid #10B981;border-radius:10px;padding:10px 14px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-size:10px;color:#10B981;font-weight:600">🟢 Dia iniciado</div>
+          <div style="font-size:13px;font-weight:700" id="km-inicial-label">KM inicial: —</div>
+        </div>
+        <button onclick="cancelarDiaKm()" style="background:transparent;border:none;color:#EF4444;font-size:11px;cursor:pointer">Cancelar</button>
+      </div>
+      <div class="grid-2" style="margin-bottom:12px">
+        <div><label class="form-label">KM FINAL</label><input class="form-input" type="number" id="km-final" placeholder="Ex: 27087" min="0" oninput="calcularKmDia()"/></div>
+        <div><label class="form-label">CORRIDAS</label><input class="form-input" type="number" id="km-corridas" placeholder="0" min="0"/></div>
+      </div>
+      <!-- Resumo -->
+      <div id="km-resumo" style="display:none;background:#1A1A1A;border-radius:10px;padding:12px;margin-bottom:12px">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px">
+          <div style="text-align:center">
+            <div style="font-size:9px;color:#aaa">KM</div>
+            <div style="font-size:20px;font-weight:900;color:#10B981" id="km-calc-val">0</div>
+          </div>
+          <div style="text-align:center">
+            <div style="font-size:9px;color:#aaa">Corridas</div>
+            <div style="font-size:20px;font-weight:900;color:#F97316" id="km-calc-corridas">0</div>
+          </div>
+          <div style="text-align:center">
+            <div style="font-size:9px;color:#aaa">Dia</div>
+            <div style="font-size:13px;font-weight:700;color:#888" id="km-calc-data">—</div>
+          </div>
+          <div style="text-align:center">
+            <div style="font-size:9px;color:#aaa">Valor</div>
+            <div style="font-size:15px;font-weight:900;color:#10B981" id="km-calc-valor">R$0</div>
+          </div>
+        </div>
+      </div>
+      <button class="btn-primary" onclick="encerrarDiaKm()" style="background:linear-gradient(135deg,#065F46,#10B981)">🏁 Encerrar o Dia!</button>
+    </div>
+
+    <!-- Animação carro -->
+    <div id="km-car-anim" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.9);z-index:9999;flex-direction:column;align-items:center;justify-content:center">
+      <div style="font-size:18px;font-weight:700;color:#10B981;margin-bottom:16px" id="km-anim-label">Salvando o dia...</div>
+      <div id="km-road" style="width:280px;height:60px;background:#2A2A2A;border-radius:8px;position:relative;overflow:hidden;margin-bottom:16px">
+        <div style="position:absolute;top:50%;height:4px;background:repeating-linear-gradient(90deg,#F59E0B 0px,#F59E0B 30px,transparent 30px,transparent 60px);width:200%;animation:roadMove 0.5s linear infinite;transform:translateY(-50%)"></div>
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:36px;animation:carBounce 0.3s ease infinite alternate">🚗</div>
+      </div>
+      <div style="font-size:13px;color:#aaa" id="km-anim-info"></div>
+      <div id="km-check" style="display:none;text-align:center">
+        <div style="font-size:60px;animation:popIn 0.4s ease">✅</div>
+        <div style="font-size:18px;font-weight:800;color:#10B981;margin-top:8px">Dia salvo!</div>
+      </div>
+    </div>
+
     <div id="lista-km-dia"></div>
   </div>
 
@@ -1062,7 +1144,6 @@ const ABAS_EMP = [
   [ // UBER
     {id:'painel',    label:'📊 Painel'},
     {id:'km-dia',    label:'🚗 KM do Dia'},
-    {id:'valor-dia', label:'💰 Valor do Dia'},
     {id:'meta',      label:'🎯 Meta'},
     {id:'valor-mes', label:'💵 Valor do Mês'},
     {id:'km-mes',    label:'📊 KM do Mês'},
@@ -1128,16 +1209,86 @@ function fmtReal(v){ return 'R$ '+parseFloat(v||0).toLocaleString('pt-BR',{minim
 function getMesDeData(d){ if(!d)return''; const dt=new Date(d+'T12:00:00'); return MESES[dt.getMonth()]; }
 
 // KM DO DIA
+let kmInicialVal = 0;
+
+function iniciarDiaKm(){
+  const inicial = parseFloat(document.getElementById('km-inicial')?.value)||0;
+  if(!inicial){ alert('Coloque o KM inicial!'); return; }
+  kmInicialVal = inicial;
+  document.getElementById('km-iniciar-wrap').style.display='none';
+  document.getElementById('km-encerrar-wrap').style.display='block';
+  document.getElementById('km-inicial-label').textContent='KM inicial: '+inicial.toLocaleString('pt-BR');
+}
+
+function cancelarDiaKm(){
+  kmInicialVal=0;
+  document.getElementById('km-encerrar-wrap').style.display='none';
+  document.getElementById('km-iniciar-wrap').style.display='block';
+  document.getElementById('km-final').value='';
+  document.getElementById('km-corridas').value='';
+  const _kvg=document.getElementById('km-valor-ganho'); if(_kvg) _kvg.value='';
+  document.getElementById('km-resumo').style.display='none';
+}
+
+function calcularKmDia(){
+  const final = parseFloat(document.getElementById('km-final')?.value)||0;
+  const corridas = document.getElementById('km-corridas')?.value||'0';
+  const data = document.getElementById('km-data')?.value||todayStr();
+  if(final>0&&kmInicialVal>0){
+    const km = Math.max(0, final-kmInicialVal);
+    document.getElementById('km-resumo').style.display='block';
+    document.getElementById('km-calc-val').textContent=km;
+    document.getElementById('km-calc-corridas').textContent=corridas||'0';
+    document.getElementById('km-calc-data').textContent=fmtData(data);
+    const _vg=document.getElementById('km-valor-ganho'); if(document.getElementById('km-calc-valor')) document.getElementById('km-calc-valor').textContent=fmtReal(parseFloat(_vg?.value||0));
+  }
+}
+
+function encerrarDiaKm(){
+  const final = parseFloat(document.getElementById('km-final')?.value)||0;
+  const corridas = parseInt(document.getElementById('km-corridas')?.value)||0;
+  const valorGanho = parseFloat(document.getElementById('km-valor-ganho')?.value)||0;
+  const data = document.getElementById('km-data')?.value||todayStr();
+  if(!final||final<=kmInicialVal){ alert('KM final inválido!'); return; }
+  const km = final - kmInicialVal;
+  // Show animation
+  const anim = document.getElementById('km-car-anim');
+  document.getElementById('km-anim-info').textContent=km+' km · '+corridas+' corridas'+(valorGanho?' · '+fmtReal(valorGanho):'');
+  anim.classList.add('show');
+  setTimeout(()=>{
+    document.getElementById('km-road').style.display='none';
+    document.getElementById('km-anim-label').textContent='';
+    document.getElementById('km-anim-info').style.display='none';
+    document.getElementById('km-check').style.display='block';
+  },1000);
+  setTimeout(()=>{
+    anim.classList.remove('show');
+    document.getElementById('km-road').style.display='block';
+    document.getElementById('km-anim-label').textContent='Salvando o dia...';
+    document.getElementById('km-anim-info').style.display='block';
+    document.getElementById('km-check').style.display='none';
+    // Save
+    const dados=getKmDados();
+    dados.push({id:Date.now(),data,km,corridas,valor:valorGanho,kmInicial:kmInicialVal,kmFinal:final,mes:getMesDeData(data)});
+    salvarKmDados(dados);
+    cancelarDiaKm();
+    renderKmDia();
+    const _kmD=document.getElementById('km-data'); if(_kmD) _kmD.value=todayStr();
+  },1800);
+}
+
 function salvarKm(){
-  const data=document.getElementById('km-data').value;
-  const valor=parseFloat(document.getElementById('km-valor').value);
-  const corridas=parseInt(document.getElementById('km-corridas').value)||0;
-  if(!data||isNaN(valor)||valor<=0){alert('Preencha data e KM.');return;}
+  // Legacy function - now using encerrarDiaKm
+  const data=document.getElementById('km-data')?.value;
+  const valorEl=document.getElementById('km-valor');
+  const valor=valorEl?parseFloat(valorEl.value):0;
+  const corridas=parseInt(document.getElementById('km-corridas')?.value)||0;
+  if(!data||isNaN(valor)||valor<=0){return;}
   const dados=getKmDados();
   dados.push({id:Date.now(),data,mes:getMesDeData(data),km:valor,corridas});
   salvarKmDados(dados);
-  document.getElementById('km-valor').value='';
-  document.getElementById('km-corridas').value='';
+  if(valorEl) valorEl.value='';
+  const corridasEl=document.getElementById('km-corridas'); if(corridasEl) corridasEl.value='';
   mostrarSucesso(); renderKmDia(); renderKmMes(); renderMeta(); if(empresaAtual===2) renderPainel();
 }
 function excluirKm(id){
@@ -1147,8 +1298,7 @@ function excluirKm(id){
 }
 function renderKmDia(){
   const e=EMPRESAS[2];
-  document.getElementById('km-btn').style.background=`linear-gradient(135deg,${e.primary},${e.primaryDark})`;
-  document.getElementById('km-data').value=document.getElementById('km-data').value||todayStr();
+  const _kmData=document.getElementById('km-data'); if(_kmData) _kmData.value=_kmData.value||todayStr();
   const dados=[...getKmDados()].sort((a,b)=>b.id-a.id);
   if(dados.length===0){document.getElementById('lista-km-dia').innerHTML='<div class="empty">Nenhum registro ainda.</div>';return;}
   document.getElementById('lista-km-dia').innerHTML=dados.map(d=>`
@@ -1939,6 +2089,48 @@ function irParaDemanda(id){
     if(el) el.scrollIntoView({behavior:'smooth', block:'center'});
   }, 100);
 }
+function toggleConfig(){
+  const modal = document.getElementById('config-modal');
+  const visible = modal.style.display !== 'none';
+  modal.style.display = visible ? 'none' : 'flex';
+}
+
+function exportarDados(){
+  const keys = ['log_reg_0','log_reg_1','log_reg_2','log_dem_0','log_dem_1','log_dem_2',
+    'df_cartoes','df_compras','df_fixas','df_gasolina','df_renda','df_emergencia',
+    'uber_km','uber_valor','uber_meta','log_cond_0','log_cond_1','log_cond_2'];
+  const data = {};
+  keys.forEach(k=>{ const v=localStorage.getItem(k); if(v) data[k]=v; });
+  // Also save rota keys
+  Object.keys(localStorage).forEach(k=>{ if(k.startsWith('log_rota_')) data[k]=localStorage.getItem(k); });
+  const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `bruno-melo-app-backup-${todayStr()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toggleConfig();
+}
+
+function importarDados(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  if(!confirm('⚠️ Isso vai substituir TODOS os seus dados atuais. Tem certeza?')) return;
+  const reader = new FileReader();
+  reader.onload = (e)=>{
+    try{
+      const data = JSON.parse(e.target.result);
+      Object.keys(data).forEach(k=>localStorage.setItem(k, data[k]));
+      alert('✅ Dados importados com sucesso! O app vai recarregar.');
+      location.reload();
+    } catch(err){
+      alert('❌ Erro ao importar: arquivo inválido.');
+    }
+  };
+  reader.readAsText(file);
+}
+
 function toggleDemandaForm(){
   const form = document.getElementById('demanda-form-card');
   const btn = document.getElementById('btn-nova-demanda');
@@ -3050,6 +3242,35 @@ function renderRolagem(){
       <button onclick="rolarTodosAtrasados()" style="background:#EF4444;color:#fff;width:100%;margin-top:10px;padding:10px;border-radius:10px;border:none;font-size:12px;font-weight:700;cursor:pointer">🔂 Rolar todos atrasados para ${proxMes}</button>
     </div>`:'';
 
+  // Calcular total atrasado geral
+  const totalAtrasadoCartoes = compras.filter(c=>c.cartaoId).reduce((a,c)=>{
+    return a + c.parcelas.filter(p=>MESES.indexOf(p.mes)<idxMesAtual).reduce((b,p)=>{
+      const pg=(c.parcelasPagas||[]).includes(p.num); return b+(pg?0:p.valor);
+    },0);
+  },0);
+  const totalAtrasadoFixas = fixas.filter(f=>f.temporaria).reduce((a,f)=>{
+    return a + (f.mesesAtivos||[]).filter(m=>MESES.indexOf(m.split('/')[0])<idxMesAtual&&!(f.mesesPagos||[]).includes(m)).reduce((b)=>b+f.valor,0);
+  },0);
+  const totalAtrasadoGeral = totalAtrasadoCartoes + totalAtrasadoFixas;
+  const detCartoes = cartoes.map(c=>{
+    const val=compras.filter(p=>p.cartaoId===c.id).reduce((a,p)=>a+p.parcelas.filter(x=>MESES.indexOf(x.mes)<idxMesAtual).reduce((b,x)=>{const pg=(p.parcelasPagas||[]).includes(x.num);return b+(pg?0:x.valor);},0),0);
+    return val>0?`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f5f5f5;font-size:12px"><span>💳 ${c.nome}</span><span style="font-weight:800;color:#EF4444">${fmtReal(val)}</span></div>`:'';
+  }).join('');
+  const detFixasAtr = fixas.filter(f=>f.temporaria).map(f=>{
+    const val=(f.mesesAtivos||[]).filter(m=>MESES.indexOf(m.split('/')[0])<idxMesAtual&&!(f.mesesPagos||[]).includes(m)).reduce((a)=>a+f.valor,0);
+    return val>0?`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f5f5f5;font-size:12px"><span>📋 ${f.desc}</span><span style="font-weight:800;color:#EF4444">${fmtReal(val)}</span></div>`:'';
+  }).join('');
+  const totalAtrasadoHTML = totalAtrasadoGeral>0?`
+    <div onclick="toggleAtrasadoDetalhe()" style="background:linear-gradient(135deg,#1A0000,#7F1D1D);border:1px solid #EF4444;border-radius:14px;padding:16px;margin-bottom:10px;cursor:pointer">
+      <div style="font-size:11px;color:#EF4444;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">⚠️ Total Atrasado</div>
+      <div style="font-size:32px;font-weight:900;color:#fff">${fmtReal(totalAtrasadoGeral)}</div>
+      <div style="font-size:11px;color:#EF4444;margin-top:4px">▾ toque para ver detalhes</div>
+    </div>
+    <div id="atrasado-detalhe" style="display:none;background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:12px;border-left:3px solid #EF4444">
+      <div style="font-size:11px;font-weight:700;color:#EF4444;margin-bottom:8px;text-transform:uppercase">Detalhamento</div>
+      ${detCartoes}${detFixasAtr}
+    </div>`:'';
+
   if(rolagemTipo==='cartoes'){
     // Build cartao select options
     const cartaoOptions = cartoes.map(c=>`<option value="${c.id}" ${c.id==rolagemCartaoId?'selected':''}>${c.nome}</option>`).join('');
@@ -3074,7 +3295,7 @@ function renderRolagem(){
     // Compras do cartão no mês atual não pagas
     const comprasMes = cartao ? compras.filter(p=>p.cartaoId===cartao.id&&p.parcelas.some(x=>x.mes===mesAtual)) : [];
 
-    document.getElementById('rolagem-content').innerHTML = avisoHTML + `
+    document.getElementById('rolagem-content').innerHTML = totalAtrasadoHTML + avisoHTML + `
       <div class="card">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
           <div>
@@ -3156,7 +3377,7 @@ function renderRolagem(){
     const rolagemFixas = Math.max(0,totalFixas-pagoFixas);
     const pctPagoF = totalFixas>0?Math.min(100,Math.round((pagoFixas/totalFixas)*100)):0;
 
-    document.getElementById('rolagem-content').innerHTML = avisoHTML + `
+    document.getElementById('rolagem-content').innerHTML = totalAtrasadoHTML + avisoHTML + `
       <div class="card">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
           <div>
@@ -3225,7 +3446,7 @@ function renderRolagem(){
     const cartaoSel = cartoes.find(c=>c.id==rolagemCartaoId)||cartoes[0];
     const cartaoOptions = cartoes.map(c=>`<option value="${c.id}" ${c.id==rolagemCartaoId?'selected':''}>${c.nome}</option>`).join('');
 
-    document.getElementById('rolagem-content').innerHTML = avisoHTML + `
+    document.getElementById('rolagem-content').innerHTML = totalAtrasadoHTML + avisoHTML + `
       <div class="card">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
           <div>
@@ -3282,6 +3503,12 @@ function renderRolagem(){
   }
 }
 
+
+function toggleAtrasadoDetalhe(){
+  const el = document.getElementById('atrasado-detalhe');
+  if(!el) return;
+  el.style.display = el.style.display==='none'?'block':'none';
+}
 function rolarFixa(fixaId){
   const mesAtual = MESES[new Date().getMonth()];
   const proxMes = MESES[(new Date().getMonth()+1)%12];
@@ -4360,7 +4587,7 @@ popularMesesSelect('valor-filtro-mes');
 popularMesesSelect('df-comp-filtro-mes');
 document.getElementById('rota-data-sel').value=todayStr();
 document.getElementById('f-data').value=todayStr();
-document.getElementById('km-data').value=todayStr();
+const _kmD=document.getElementById('km-data'); if(_kmD) _kmD.value=todayStr();
 document.getElementById('valor-data').value=todayStr();
 document.getElementById('df-comp-data').value=todayStr();
 document.getElementById('cond-data').value=todayStr();
@@ -4371,6 +4598,3 @@ renderPainel();
 </script>
 </body>
 </html>
- 
-
- 
