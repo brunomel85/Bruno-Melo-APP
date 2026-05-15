@@ -3891,59 +3891,84 @@ function toggleDespesasPainel(){
   if(!visible){
     const mesSel = document.getElementById('painel-mes')?.value||'Todos';
     const mesFiltro = mesSel==='Todos'?MESES[new Date().getMonth()]:mesSel;
-    const itens = [];
-
-    // Cartões — parcelas do mês
     const cartoes = getCartoes();
-    getCompras().filter(c=>c.cartaoId&&c.parcelas.some(p=>p.mes===mesFiltro)).forEach(c=>{
-      const parc = c.parcelas.find(p=>p.mes===mesFiltro);
-      if(!parc) return;
-      const pago = (c.parcelasPagas||[]).includes(parc.num);
-      const cartao = cartoes.find(x=>x.id===c.cartaoId);
-      itens.push({nome:'💳 '+c.desc, valor:parc.valor, cor:cartao?cartao.cor:'#8A05BE', sub:cartao?cartao.nome:'Cartão', pago});
-    });
+    const compras = getCompras();
+    const fixas = getFixas();
+    const mesAnoFiltro = `${mesFiltro}/${new Date().getFullYear()}`;
+
+    // Cartões — agrupar por cartão
+    const cartaoItems = cartoes.map(c=>{
+      const comprasDoCartao = compras.filter(x=>x.cartaoId===c.id&&x.parcelas.some(p=>p.mes===mesFiltro));
+      if(comprasDoCartao.length===0) return null;
+      const total = comprasDoCartao.reduce((a,x)=>{
+        const parc=x.parcelas.find(p=>p.mes===mesFiltro);
+        return a+(parc?parc.valor:0);
+      },0);
+      const todasPagas = comprasDoCartao.every(x=>{
+        const parc=x.parcelas.find(p=>p.mes===mesFiltro);
+        return parc&&(x.parcelasPagas||[]).includes(parc.num);
+      });
+      const comprasHTML = comprasDoCartao.map(x=>{
+        const parc=x.parcelas.find(p=>p.mes===mesFiltro);
+        const pago=parc&&(x.parcelasPagas||[]).includes(parc.num);
+        return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0 6px 16px;border-bottom:1px solid #f5f5f5;${pago?'opacity:0.55':''}">
+          <div style="width:6px;height:6px;border-radius:50%;background:${pago?'#10B981':c.cor};flex-shrink:0"></div>
+          <div style="flex:1;font-size:12px;${pago?'text-decoration:line-through;color:#888':''}">${x.desc}</div>
+          <div style="font-size:12px;font-weight:700;color:${pago?'#10B981':c.cor}">${pago?'✅ ':''}${fmtReal(parc?parc.valor:0)}</div>
+        </div>`;
+      }).join('');
+      return {id:c.id, nome:c.nome, cor:c.cor, total, todasPagas, comprasHTML};
+    }).filter(Boolean);
 
     // Fixas do mês
-    getFixas().forEach(f=>{
-      const ativa = !f.temporaria||(f.mesesAtivos&&f.mesesAtivos.some(m=>m.startsWith(mesFiltro)));
-      if(!ativa) return;
-      const pago = (f.mesesPagos||[]).some(m=>m.startsWith(mesFiltro));
-      itens.push({nome:'📋 '+f.desc, valor:f.valor, cor:'#DC2626', sub:f.temporaria?'Fixa temporária':'Fixa permanente', pago});
-    });
+    const fixaItems = fixas.map(f=>{
+      const ativa=!f.temporaria||(f.mesesAtivos&&f.mesesAtivos.some(m=>m.startsWith(mesFiltro)));
+      if(!ativa) return null;
+      const pago=(f.mesesPagos||[]).some(m=>m.startsWith(mesFiltro));
+      const parcelasHTML = f.temporaria&&f.mesesAtivos?`
+        <div style="display:flex;flex-wrap:wrap;gap:4px;padding:8px 0 4px 16px">
+          ${f.mesesAtivos.map(m=>{
+            const pg=(f.mesesPagos||[]).includes(m);
+            return `<span style="background:${pg?'#DCFCE7':'#FEE2E2'};color:${pg?'#166534':'#991B1B'};border-radius:6px;padding:2px 7px;font-size:10px;font-weight:700">${pg?'✅':'❌'} ${m.split('/')[0].slice(0,3)}</span>`;
+          }).join('')}
+        </div>`:'';
+      return {id:f.id, nome:f.desc, valor:f.valor, pago, temporaria:f.temporaria, duracao:f.duracao, mesesPagos:(f.mesesPagos||[]).length, parcelasHTML};
+    }).filter(Boolean);
 
-    // Totais
-    const totalBruto = itens.reduce((a,i)=>a+i.valor,0);
-    const totalPago = itens.filter(i=>i.pago).reduce((a,i)=>a+i.valor,0);
+    const totalBruto = cartaoItems.reduce((a,c)=>a+c.total,0) + fixaItems.reduce((a,f)=>a+f.valor,0);
+    const totalPago = cartaoItems.filter(c=>c.todasPagas).reduce((a,c)=>a+c.total,0) + fixaItems.filter(f=>f.pago).reduce((a,f)=>a+f.valor,0);
     const totalFalta = totalBruto - totalPago;
 
     el.innerHTML=`
       <div style="font-size:12px;font-weight:700;color:#555;margin-bottom:8px">💸 Todas as Despesas — ${mesFiltro}</div>
       <div style="display:flex;justify-content:space-between;margin-bottom:10px;padding:8px 0;border-bottom:2px solid #f0f0f0">
-        <div style="text-align:center">
-          <div style="font-size:9px;color:#aaa">TOTAL</div>
-          <div style="font-size:14px;font-weight:800;color:#1A1A2E">${fmtReal(totalBruto)}</div>
-        </div>
-        <div style="text-align:center">
-          <div style="font-size:9px;color:#aaa">PAGO</div>
-          <div style="font-size:14px;font-weight:800;color:#10B981">${fmtReal(totalPago)}</div>
-        </div>
-        <div style="text-align:center">
-          <div style="font-size:9px;color:#aaa">FALTA</div>
-          <div style="font-size:14px;font-weight:800;color:#EF4444">${fmtReal(totalFalta)}</div>
-        </div>
+        <div style="text-align:center"><div style="font-size:9px;color:#aaa">TOTAL</div><div style="font-size:14px;font-weight:800;color:#1A1A2E">${fmtReal(totalBruto)}</div></div>
+        <div style="text-align:center"><div style="font-size:9px;color:#aaa">PAGO</div><div style="font-size:14px;font-weight:800;color:#10B981">${fmtReal(totalPago)}</div></div>
+        <div style="text-align:center"><div style="font-size:9px;color:#aaa">FALTA</div><div style="font-size:14px;font-weight:800;color:#EF4444">${fmtReal(totalFalta)}</div></div>
       </div>
-      ${itens.length===0
-        ?'<div style="text-align:center;opacity:0.4;font-size:13px">Nenhuma despesa encontrada</div>'
-        :itens.map(it=>`
-          <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f5f5f5;${it.pago?'opacity:0.6':''}">
-            <div style="width:8px;height:8px;border-radius:50%;background:${it.pago?'#10B981':it.cor};flex-shrink:0"></div>
-            <div style="flex:1">
-              <div style="font-size:13px;font-weight:600;${it.pago?'text-decoration:line-through;color:#888':''}">${it.nome}</div>
-              <div style="font-size:10px;opacity:0.5">${it.sub}</div>
-            </div>
-            <div style="font-size:13px;font-weight:800;color:${it.pago?'#10B981':it.cor}">${it.pago?'✅ ':''} ${fmtReal(it.valor)}</div>
-          </div>`).join('')
-      }`;
+      ${cartaoItems.length>0?`<div style="font-size:10px;font-weight:700;color:#aaa;margin:6px 0 4px">💳 CARTÕES</div>`:''}
+      ${cartaoItems.map(c=>`
+        <div>
+          <div onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'" style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f5f5f5;cursor:pointer">
+            <div style="width:8px;height:8px;border-radius:50%;background:${c.todasPagas?'#10B981':c.cor};flex-shrink:0"></div>
+            <div style="flex:1;font-size:13px;font-weight:600;${c.todasPagas?'color:#10B981':''}">${c.nome}</div>
+            <div style="font-size:13px;font-weight:800;color:${c.todasPagas?'#10B981':c.cor}">${c.todasPagas?'✅ ':''}${fmtReal(c.total)}</div>
+            <span style="font-size:10px;color:#aaa">▾</span>
+          </div>
+          <div style="display:none">${c.comprasHTML}</div>
+        </div>`).join('')}
+      ${fixaItems.length>0?`<div style="font-size:10px;font-weight:700;color:#aaa;margin:10px 0 4px">📋 FIXAS</div>`:''}
+      ${fixaItems.map(f=>`
+        <div>
+          <div onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'" style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f5f5f5;cursor:pointer;${f.pago?'opacity:0.6':''}">
+            <div style="width:8px;height:8px;border-radius:50%;background:${f.pago?'#10B981':'#DC2626'};flex-shrink:0"></div>
+            <div style="flex:1;font-size:13px;font-weight:600;${f.pago?'text-decoration:line-through;color:#888':''}">${f.nome}</div>
+            ${f.temporaria?`<div style="font-size:10px;color:#aaa;margin-right:4px">${f.mesesPagos}/${f.duracao}x</div>`:''}
+            <div style="font-size:13px;font-weight:800;color:${f.pago?'#10B981':'#DC2626'}">${f.pago?'✅ ':''}${fmtReal(f.valor)}</div>
+            ${f.temporaria?`<span style="font-size:10px;color:#aaa">▾</span>`:''}
+          </div>
+          ${f.temporaria?`<div style="display:none">${f.parcelasHTML}</div>`:''}
+        </div>`).join('')}`;
   }
   el.style.display = visible ? 'none' : 'block';
 }
