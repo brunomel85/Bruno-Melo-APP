@@ -2473,14 +2473,24 @@ function salvarDemanda(){
   };
   demandas=editandoDemId?demandas.map(d=>d.id===editandoDemId?dem:d):[...demandas,dem];
   salvarDemandas(empresaAtual,demandas);
+  // Mostrar toast PRIMEIRO
+  mostrarToastDemanda();
+  // Zerar todos os campos
   document.getElementById('d-titulo').value='';
   document.getElementById('d-local').value='';
-  const _dEndEl=document.getElementById('d-endereco'); if(_dEndEl) _dEndEl.value=''; if(dDataEl) dDataEl.value=todayStr();
+  const _dEndEl=document.getElementById('d-endereco'); if(_dEndEl) _dEndEl.value='';
+  const dDataEl2=document.getElementById('d-data'); if(dDataEl2) dDataEl2.value=todayStr();
   document.getElementById('d-desc').value='';
   document.getElementById('d-prazo').value='Entrega de Maquininha';
   document.getElementById('d-prioridade').value='Média';
   document.getElementById('d-qtd').value='';
   document.getElementById('d-responsavel').value='';
+  document.getElementById('d-bobinas').value='';
+  const dcc=document.getElementById('d-correios-cliente'); if(dcc) dcc.value='';
+  const dcd=document.getElementById('d-correios-destino'); if(dcd) dcd.value='';
+  const dcw=document.getElementById('d-correios-wrap'); if(dcw) dcw.style.display='none';
+  correiosAtivo=false;
+  const dch=document.getElementById('d-correios-check'); if(dch){dch.textContent='';dch.style.background='transparent';dch.style.borderColor='#ccc';}
   limparModelo();
   limparAdquirente();
   editandoDemId=null;
@@ -2490,7 +2500,7 @@ function salvarDemanda(){
   const dfc=document.getElementById('demanda-form-card'); if(dfc) dfc.style.display='none';
   const bnd=document.getElementById('btn-nova-demanda'); if(bnd) bnd.textContent='➕ Nova Demanda';
   document.getElementById('d-btn-cancelar').style.display='none';
-  mostrarToastDemanda(); renderDemandas();
+  renderDemandas();
 }
 
 function cancelarDemanda(){
@@ -3888,11 +3898,17 @@ function renderContas(){
   if(!totalEl||!listaEl) return;
 
   totalEl.innerHTML = contas.length>0?`
-    <div style="background:linear-gradient(135deg,#1A0A2E,#4C1D95);border-radius:20px;padding:18px;margin-bottom:14px">
-      <div style="font-size:10px;color:rgba(255,255,255,0.5);margin-bottom:4px">💰 TOTAL EM CONTAS</div>
-      <div style="font-size:32px;font-weight:900;color:#fff">${fmtReal(totalSaldo)}</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:12px">
-        ${contas.map(c=>`<span style="background:${c.cor};border-radius:8px;padding:3px 9px;font-size:10px;font-weight:700;color:#fff">${c.nome} ${fmtReal(c.saldo)}</span>`).join('')}
+    <div style="background:#E8F5E9;border-radius:20px;padding:20px;margin-bottom:14px;box-shadow:8px 8px 16px #c8d8c9,-8px -8px 16px #fff">
+      <div style="text-align:center;margin-bottom:16px">
+        <div style="font-size:10px;color:#555;margin-bottom:4px;font-weight:600;letter-spacing:1px">💰 TOTAL EM CONTAS</div>
+        <div style="font-size:44px;font-weight:900;color:#1B5E20;animation:contaPulse 2s infinite">${fmtReal(totalSaldo)}</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(${Math.min(contas.length,3)},1fr);gap:8px">
+        ${contas.map(c=>`
+          <div style="background:#E8F5E9;border-radius:12px;padding:10px;text-align:center;box-shadow:4px 4px 8px #c8d8c9,-4px -4px 8px #fff">
+            <div style="font-size:9px;color:#555;font-weight:600;margin-bottom:3px">${c.nome}</div>
+            <div style="font-size:15px;font-weight:900;color:#2E7D32">${fmtReal(c.saldo)}</div>
+          </div>`).join('')}
       </div>
     </div>`:'';
 
