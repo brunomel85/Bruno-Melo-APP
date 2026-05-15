@@ -205,6 +205,9 @@
     }
     #toast-compra-title { font-size:13px; font-weight:700; }
     #toast-compra-sub { font-size:11px; opacity:0.9; margin-left:4px; }
+
+    @keyframes fadeGreen { from{background:#fff} to{background:#DCFCE7} }
+    @keyframes fadeRed { from{opacity:0} to{opacity:1} }
     @keyframes roadMove { from{transform:translateX(0) translateY(-50%)} to{transform:translateX(-60px) translateY(-50%)} }
     @keyframes carBounce { from{transform:translate(-50%,-55%)} to{transform:translate(-50%,-45%)} }
     @keyframes popIn { from{transform:scale(0);opacity:0} to{transform:scale(1);opacity:1} }
@@ -270,26 +273,9 @@
       <button class="emp-btn active" onclick="trocarEmpresa(0)" id="eb-0">DE FELIPPE</button>
       <button class="emp-btn" onclick="trocarEmpresa(1)" id="eb-1">OPAY</button>
       <button class="emp-btn" onclick="trocarEmpresa(2)" id="eb-2">UBER</button>
-      <button onclick="toggleConfig()" style="padding:6px 10px;border-radius:20px;border:2px solid rgba(255,255,255,0.3);color:rgba(255,255,255,0.75);background:transparent;font-size:13px;cursor:pointer;flex-shrink:0;line-height:1">⚙️</button>
     </div>
   </div>
   <div class="nav-tabs" id="nav-tabs"></div>
-</div>
-
-<!-- Config Modal -->
-<div id="config-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9998;align-items:flex-end;justify-content:center">
-  <div style="background:#F3F0FF;border-radius:20px 20px 0 0;padding:20px 23px 32px;width:100%;max-width:480px">
-    <div style="font-size:16px;font-weight:800;margin-bottom:14px;text-align:center">⚙️ Configurações</div>
-    <div style="background:#fff;border-radius:14px;padding:16px;margin-bottom:10px">
-      <button onclick="exportarDados()" style="width:100%;padding:14px;border-radius:12px;border:1.5px solid #10B981;background:#10B98115;color:#10B981;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:10px">📤 Exportar todos os dados</button>
-      <label style="width:100%;display:block">
-        <div style="padding:14px;border-radius:12px;border:1.5px solid #3B82F6;background:#3B82F615;color:#3B82F6;font-size:13px;font-weight:700;cursor:pointer;text-align:center">📥 Importar dados</div>
-        <input type="file" accept=".json" onchange="importarDados(event)" style="display:none"/>
-      </label>
-      <div style="font-size:10px;color:#aaa;text-align:center;margin-top:8px">⚠️ Importar substitui todos os dados atuais</div>
-    </div>
-    <button onclick="toggleConfig()" style="width:100%;padding:13px;border-radius:12px;border:none;background:#fff;color:#888;font-size:13px;font-weight:700;cursor:pointer">Fechar</button>
-  </div>
 </div>
 
 <div class="main">
@@ -631,6 +617,10 @@
           <input class="form-input" id="d-local" placeholder="" />
         </div>
         <div style="grid-column:1/-1">
+          <label class="form-label">ENDEREÇO</label>
+          <input class="form-input" id="d-endereco" placeholder="Rua, número, bairro..."/>
+        </div>
+        <div style="grid-column:1/-1">
           <label class="form-label">Data</label>
           <div style="display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:10px;border:1.5px solid #E5E7EB;background:#fff;margin-bottom:12px">
             <span style="font-size:14px">📅</span>
@@ -764,6 +754,10 @@
       <div>
         <label class="form-label">Tipo de Operação *</label>
         <div class="tipo-buttons" id="tipo-buttons"></div>
+      </div>
+      <div style="margin-bottom:12px">
+        <label class="form-label">NOME DO CLIENTE</label>
+        <input class="form-input" id="f-nome-cliente" placeholder="Nome do cliente..."/>
       </div>
       <div class="grid-2" style="margin-bottom:0">
         <div>
@@ -1719,7 +1713,8 @@ function renderPainel(){
       return `<div class="recent-item" style="align-items:flex-start">
         <div class="item-icon" style="background:${bg}22;flex-shrink:0">${icon}</div>
         <div style="flex:1">
-          <div style="font-weight:700;font-size:14px;color:#1A1A2E">${r.tipo}</div>
+          ${r.nomeCliente?`<div style="font-weight:800;font-size:15px;color:#1A1A2E;margin-bottom:2px">${r.nomeCliente}</div>`:''}
+          <div style="font-weight:700;font-size:${r.nomeCliente?'12px':'14px'};color:${bg}">${r.tipo}</div>
           <div style="font-size:11px;opacity:0.55;margin-top:2px">${fmtData(r.data)}${diaSemana?' · '+diaSemana:''}</div>
           ${(r.qtd||r.modelo||r.adquirente||r.qtdBobinas)?`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:5px">
             ${r.qtd?`<span style="background:${bg}15;color:${bg};border-radius:5px;padding:2px 6px;font-size:10px;font-weight:700">📦 ${r.qtd}</span>`:''}
@@ -1990,7 +1985,7 @@ function renderDemandas(){
     const demBg=d.status==='Concluída'?'#DCFCE7':d.status==='Cancelada'?'#FEE2E2':d.status==='Em andamento'?'#DBEAFE':d.status==='Pendente'?'#FEF9C3':'#fff';
     const demTextColor=d.status==='Concluída'?'#166534':d.status==='Cancelada'?'#991B1B':d.status==='Em andamento'?'#1E40AF':d.status==='Pendente'?'#92400E':'#1A1A2E';
     const demBorderWidth=(d.status==='Concluída'||d.status==='Cancelada')?'2px':'1px';
-    return `<div class="demanda-card" style="border-color:${demBorderColor};border-width:${demBorderWidth};border-left:4px solid ${demBorderColor};opacity:${concluida?0.75:1}" onclick="toggleDem(${d.id})">
+    return `<div class="demanda-card" id="dem-card-${d.id}" style="border-color:${demBorderColor};border-width:${demBorderWidth};border-left:4px solid ${demBorderColor};background:${demBg};opacity:${concluida?0.85:1}" onclick="toggleDem(${d.id})">
       <div class="demanda-header">
         <div class="prioridade-dot" style="background:${p.dot}"></div>
         <div class="demanda-info">
@@ -2009,6 +2004,11 @@ function renderDemandas(){
             ${d.desc?`<div style="font-size:11px;opacity:0.6;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">📝 ${d.desc}</div>`:''}
             ${d.correios&&d.correiosCliente?`<div style="font-size:11px;opacity:0.75;display:flex;gap:4px;align-items:center"><span>📮 Correios</span><span style="opacity:0.5">·</span><span style="font-weight:600">${d.correiosCliente}</span></div>`:''}
             ${d.correios&&d.correiosDestino?`<div style="font-size:11px;opacity:0.75;display:flex;gap:4px;align-items:center"><span>📍 Destino</span><span style="opacity:0.5">·</span><span style="font-weight:600">${d.correiosDestino}</span></div>`:''}
+            ${d.endereco?`<div style="display:flex;align-items:center;gap:6px;margin-top:5px">
+              <span style="font-size:13px">📍</span>
+              <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(d.endereco)}" target="_blank" onclick="event.stopPropagation()" style="font-size:12px;color:#3B82F6;font-weight:600;text-decoration:underline;flex:1">${d.endereco}</a>
+              <button onclick="event.stopPropagation();navigator.clipboard.writeText('${d.endereco.replace(/'/g,"\\'")}').then(()=>mostrarSucesso())" style="background:#3B82F615;border:none;color:#3B82F6;border-radius:6px;padding:2px 7px;font-size:10px;font-weight:700;cursor:pointer">📋</button>
+            </div>`:''}
             ${(d.qtd||d.modelo||d.adquirente||d.comBobinas)?`<div style="font-size:11px;opacity:0.65;display:flex;gap:4px;flex-wrap:wrap;align-items:center">
               ${d.qtd?`<span>📦 ${d.qtd}</span>`:''}
               ${d.modelo?`${d.qtd?'<span style=opacity:0.4>·</span>':''}<span>🖥️ ${d.modelo}</span>`:''}
@@ -2377,6 +2377,7 @@ function salvarDemanda(){
     titulo,
     solicitante:solicitanteSelecionado,
     local:document.getElementById('d-local').value.trim(),
+    endereco:document.getElementById('d-endereco')?.value.trim()||'',
     desc:document.getElementById('d-desc').value.trim(),
     prazo:document.getElementById('d-prazo').value,
     prioridade:document.getElementById('d-prioridade').value,
@@ -2396,7 +2397,7 @@ function salvarDemanda(){
   salvarDemandas(empresaAtual,demandas);
   document.getElementById('d-titulo').value='';
   document.getElementById('d-local').value='';
-  const dDataEl=document.getElementById('d-data'); if(dDataEl) dDataEl.value=todayStr();
+  const _dEndEl=document.getElementById('d-endereco'); if(_dEndEl) _dEndEl.value=''; if(dDataEl) dDataEl.value=todayStr();
   document.getElementById('d-desc').value='';
   document.getElementById('d-prazo').value='Entrega de Maquininha';
   document.getElementById('d-prioridade').value='Média';
@@ -2455,6 +2456,7 @@ function editarDemanda(id){
   if(d.solicitante) selecionarSolicitante(d.solicitante);
   document.getElementById('dem-form-titulo').textContent='✏️ Editar Demanda';
   const dDataEdit=document.getElementById('d-data'); if(dDataEdit) dDataEdit.value=d.dataCriacao||todayStr();
+  const _dEndEdit=document.getElementById('d-endereco'); if(_dEndEdit) _dEndEdit.value=d.endereco||'';
   const dfe=document.getElementById('demanda-form-card'); if(dfe) dfe.style.display='block';
   const bnde=document.getElementById('btn-nova-demanda'); if(bnde) bnde.textContent='✖️ Cancelar';
   document.getElementById('d-btn-salvar').textContent='💾 Salvar Alterações';
@@ -2494,18 +2496,20 @@ function renderRegistros(){
       <div class="reg-card-header">
         <div class="item-icon" style="background:${bg}22">${icon}</div>
         <div class="reg-info" style="flex:1">
-          <!-- Linha 1: nome do serviço -->
-          <div style="font-weight:700;font-size:14px;color:#1A1A2E">${r.tipo}</div>
-          <!-- Linha 2: data + dia da semana -->
+          <!-- Linha 1: nome do cliente -->
+          ${r.nomeCliente?`<div style="font-weight:800;font-size:15px;color:#1A1A2E;margin-bottom:2px">${r.nomeCliente}</div>`:''}
+          <!-- Linha 2: tipo de serviço -->
+          <div style="font-weight:700;font-size:${r.nomeCliente?'12px':'14px'};color:${bg};margin-bottom:2px">${r.tipo}</div>
+          <!-- Linha 3: data + dia da semana -->
           <div style="font-size:11px;opacity:0.55;margin-top:2px">${fmtData(r.data)} · ${['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'][new Date(r.data+'T12:00:00').getDay()]}</div>
-          <!-- Linha 3: badges qtd · modelo · adquirente · bobinas -->
+          <!-- Linha 4: badges qtd · modelo · adquirente · bobinas -->
           ${(r.qtd||r.modelo||r.adquirente||r.qtdBobinas)?`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:5px">
             ${r.qtd?`<span style="background:${bg}15;color:${bg};border-radius:5px;padding:2px 6px;font-size:10px;font-weight:700">📦 ${r.qtd}</span>`:''}
             ${r.modelo?`<span style="background:${bg}15;color:${bg};border-radius:5px;padding:2px 6px;font-size:10px;font-weight:700">🖥️ ${r.modelo}</span>`:''}
             ${r.adquirente?`<span style="background:${bg}15;color:${bg};border-radius:5px;padding:2px 6px;font-size:10px;font-weight:700">🏦 ${r.adquirente}</span>`:''}
             ${r.qtdBobinas?`<span style="background:#3B82F615;color:#3B82F6;border-radius:5px;padding:2px 6px;font-size:10px;font-weight:700">🧻 ${r.qtdBobinas}</span>`:''}
           </div>`:''}
-          <!-- Linha 4: local · responsável -->
+          <!-- Linha 5: local · responsável -->
           <div style="font-size:11px;opacity:0.55;margin-top:4px">${r.local?`📍 ${r.local}`:''}${r.local&&r.responsavel?' · ':''}${r.responsavel?`👷 ${r.responsavel}`:''}</div>
         </div>
         <div class="reg-badges">
@@ -2537,7 +2541,7 @@ function toggleDetalhe(id){ detalheAberto=detalheAberto===id?null:id; renderRegi
 // =====================
 function resetForm(){
   editandoId=null; tipoSelecionado="";
-  ['f-local','f-responsavel','f-obs'].forEach(id=>document.getElementById(id).value='');
+  ['f-local','f-responsavel','f-obs','f-nome-cliente'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
   document.getElementById('f-data').value=new Date().toISOString().slice(0,10);
   document.getElementById('f-mes').value=MESES[new Date().getMonth()];
   document.getElementById('f-modelo').value='';
@@ -2565,8 +2569,9 @@ function syncMes(){
 function salvar(){
   const local=document.getElementById('f-local').value.trim();
   const responsavel=document.getElementById('f-responsavel').value.trim();
+  const nomeCliente=document.getElementById('f-nome-cliente')?.value.trim()||'';
   if(!tipoSelecionado||!local||!responsavel){alert('Preencha: Tipo, Local e Responsável.');return;}
-  const reg={id:editandoId||Date.now(),tipo:tipoSelecionado,local,data:document.getElementById('f-data').value,mes:document.getElementById('f-mes').value,responsavel,modelo:document.getElementById('f-modelo').value,qtdBobinas:document.getElementById('f-bobinas').value,observacoes:document.getElementById('f-obs').value.trim()};
+  const reg={id:editandoId||Date.now(),tipo:tipoSelecionado,local,nomeCliente,data:document.getElementById('f-data').value,mes:document.getElementById('f-mes').value,responsavel,modelo:document.getElementById('f-modelo').value,qtdBobinas:document.getElementById('f-bobinas').value,observacoes:document.getElementById('f-obs').value.trim()};
   registros=editandoId?registros.map(r=>r.id===editandoId?reg:r):[...registros,reg];
   salvarRegistros(empresaAtual,registros);
   resetForm(); mostrarSucesso(); navTo('registros');
@@ -2820,7 +2825,16 @@ function renderCartoes(){
         ${comprasMes.length>0?``:''}
       </div>`:'';
 
-    return `<div class="card" style="padding:18px;margin-bottom:10px;border-left:4px solid ${c.cor};cursor:pointer" onclick="toggleCartao(${c.id})">
+    // Check if all parcelas of mesAtual are paid
+    const todasPagasC = comprasMes.length>0 && comprasMes.every(comp=>{
+      const parc=comp.parcelas.find(p=>p.mes===mesAtual);
+      if(!parc) return true;
+      return (comp.parcelasPagas||[]).includes(parc.num);
+    });
+    const _cardBg = todasPagasC?'#DCFCE7':'#fff';
+    const _cardBorder = todasPagasC?'#10B981':c.cor;
+
+    return `<div class="card" id="cartao-card-${c.id}" style="padding:18px;margin-bottom:10px;border-left:4px solid ${_cardBorder};background:${_cardBg};cursor:pointer;transition:all 0.3s" onclick="toggleCartao(${c.id})">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
         <div style="width:40px;height:40px;background:${c.cor}22;border-radius:10px;overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0" id="cartao-icon-${c.id}">
           ${getBancoIconHTML(c.nome,c.banco)}
@@ -2830,10 +2844,12 @@ function renderCartoes(){
           <div style="font-size:12px;opacity:0.55">Vence dia ${c.venc||'—'} · Limite ${c.limite?fmtReal(c.limite):'—'}</div>
         </div>
         <div style="text-align:right">
-          <div style="font-size:16px;font-weight:800;color:${c.cor}">${fmtReal(gastoMes)}</div>
+          <div style="font-size:16px;font-weight:800;color:${todasPagasC?'#10B981':c.cor}">${todasPagasC?'✅ ':''}${fmtReal(gastoMes)}</div>
           <div style="font-size:10px;opacity:0.55">este mês</div>
         </div>
       </div>
+      ${!todasPagasC&&comprasMes.length>0?`<div style="display:flex;justify-content:flex-end;margin-bottom:8px"><button onclick="event.stopPropagation();pagarTudoMes(${c.id},'${mesAtual}')" style="background:#10B98115;border:1.5px solid #10B981;color:#10B981;border-radius:10px;padding:5px 10px;font-size:10px;font-weight:700;cursor:pointer">✅ Pagar tudo ${mesAtual.slice(0,3)}</button></div>`:''}
+      ${todasPagasC&&comprasMes.length>0?`<div style="text-align:center;font-size:11px;color:#10B981;font-weight:700;margin-bottom:6px">🎉 Tudo pago em ${mesAtual}!</div>`:''}
       ${c.limite>0?`
       <div style="height:8px;background:#f0f0f0;border-radius:4px"><div style="height:100%;width:${pctUsado}%;background:${corBarra};border-radius:4px;transition:width 0.4s"></div></div>
       <div style="display:flex;justify-content:space-between;margin-top:5px">
@@ -2948,6 +2964,38 @@ function excluirCompra(id){
   if(!confirm('Excluir esta compra?'))return;
   salvarCompras(getCompras().filter(c=>c.id!==id));
   renderCompras(); renderDFPainel();
+}
+
+
+function pagarTudoMes(cartaoId, mes){
+  let compras = getCompras();
+  let algoPago = false;
+  compras.forEach(c=>{
+    if(c.cartaoId!==cartaoId) return;
+    const parc = c.parcelas.find(p=>p.mes===mes);
+    if(!parc) return;
+    if(!c.parcelasPagas) c.parcelasPagas=[];
+    if(!c.parcelasPagas.includes(parc.num)){
+      c.parcelasPagas.push(parc.num);
+      algoPago=true;
+    }
+  });
+  if(algoPago){
+    salvarCompras(compras);
+    // Animate card green
+    const cards = document.querySelectorAll('.card');
+    cards.forEach(card=>{
+      const btn = card.querySelector(`[onclick*="pagarTudoMes(${cartaoId}"]`);
+      if(btn){
+        card.style.animation='fadeGreen 0.5s ease forwards';
+        card.style.background='#DCFCE7';
+        card.style.borderLeftColor='#10B981';
+        setTimeout(()=>{ renderCartoes(); renderDFPainel(); },600);
+      }
+    });
+  } else {
+    renderCartoes(); renderDFPainel();
+  }
 }
 
 function toggleParcelaPaga(compId, numParcela, btnEl, cor){
@@ -3893,7 +3941,11 @@ function renderDFPainel(){
   const totalCartoes=gastosPorCartao.reduce((a,c)=>a+c.gasto,0);
   // Pre-calc ritmo for button
   const _fixasAtivas=fixas.filter(f=>!f.temporaria||(f.mesesAtivos&&f.mesesAtivos.includes(mesAnoAtual)));
-  const _totalFixas=_fixasAtivas.reduce((a,f)=>a+f.valor,0);
+  const _mesAtualStr=MESES[new Date().getMonth()];
+  const _totalFixas=_fixasAtivas.reduce((a,f)=>{
+    const pago=(f.mesesPagos||[]).some(m=>m.startsWith(_mesAtualStr));
+    return a+(pago?0:f.valor);
+  },0);
   const _totalDevo=totalCartoes+_totalFixas;
   const _hoje=new Date();
   const _ultimoDia=new Date(_hoje.getFullYear(),_hoje.getMonth()+1,0).getDate();
@@ -3919,6 +3971,16 @@ function renderDFPainel(){
   document.getElementById('painel-sub').style.color=e.textSub;
   document.getElementById('painel-tipos').innerHTML='';
 
+  // Check if all paid this month
+  const todasPagasCartoes = cartoes.length>0 && cartoes.every(c=>{
+    const comprasC=getCompras().filter(p=>p.cartaoId===c.id&&p.parcelas.some(x=>x.mes===mesFiltro));
+    if(comprasC.length===0) return true;
+    return comprasC.every(comp=>{
+      const parc=comp.parcelas.find(p=>p.mes===mesFiltro);
+      if(!parc) return true;
+      return (comp.parcelasPagas||[]).includes(parc.num);
+    });
+  });
   // Gera segmentos do donut por cartão + fixas
   const R=70, CIRC=2*Math.PI*R, SIZE=180;
   let offset=0;
@@ -4069,7 +4131,7 @@ function renderDFPainel(){
             ${totalGeral>0?segmentos.join(''):''}
           </svg>
           <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center">
-            <div style="font-size:20px;font-weight:800;color:${e.primary}">${fmtReal(totalGeral)}</div>
+            <div style="font-size:20px;font-weight:800;color:${todasPagasCartoes?'#10B981':'#DC2626'}">${todasPagasCartoes?'✅ ':''} ${fmtReal(totalGeral)}</div>
             <div style="font-size:10px;font-weight:600;color:${e.textSub}">${mesFiltro}</div>
             <div style="font-size:9px;color:#bbb;margin-top:2px">${cartoes.length} cartões</div>
           </div>
@@ -4158,7 +4220,7 @@ function salvarRenda(){
   document.getElementById('df-renda-mes').value='';
   document.getElementById('df-renda-form-titulo').textContent='➕ Nova Fonte de Renda';
   document.getElementById('df-renda-cancelar').style.display='none';
-  mostrarSucesso(); renderRenda();
+  mostrarSucesso(); renderRenda(); renderDFPainel();
 }
 function cancelarRenda(){
   editandoRendaId=null;
@@ -4182,7 +4244,7 @@ function editarRenda(id){
 function excluirRenda(id){
   if(!confirm('Excluir esta renda?'))return;
   salvarRendas(getRendas().filter(r=>r.id!==id));
-  renderRenda();
+  renderRenda(); renderDFPainel();
 }
 function renderRenda(){
   const e=EMPRESAS[0];
@@ -4598,4 +4660,3 @@ renderPainel();
 </script>
 </body>
 </html>
- 
