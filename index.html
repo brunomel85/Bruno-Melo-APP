@@ -212,10 +212,38 @@
     @keyframes carBounce { from{transform:translate(-50%,-55%)} to{transform:translate(-50%,-45%)} }
     @keyframes popIn { from{transform:scale(0);opacity:0} to{transform:scale(1);opacity:1} }
     #km-car-anim.show { display:flex!important; }
+    @keyframes contaPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.03)} }
+    @keyframes contaFadeUp { from{transform:translateY(12px);opacity:0} to{transform:translateY(0);opacity:1} }
+    @keyframes contaBlink { 0%,100%{opacity:1} 50%{opacity:0.25} }
+    .cor-opt.selected { border-color:#1A1A2E!important; transform:scale(1.2); }
+    @keyframes spinRefresh { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+    #pull-indicator {
+      position:fixed;top:-60px;left:50%;transform:translateX(-50%);
+      background:#fff;border-radius:50%;width:44px;height:44px;
+      display:flex;align-items:center;justify-content:center;
+      box-shadow:0 2px 12px rgba(0,0,0,0.15);
+      transition:top 0.2s ease;z-index:9997;font-size:20px;
+    }
+    #pull-indicator.show { top:16px; }
+    #pull-indicator.spinning span { animation:spinRefresh 0.6s linear infinite; display:inline-block; }
+    @keyframes toastDemIn { from{transform:translateX(-50%) translateY(20px);opacity:0} to{transform:translateX(-50%) translateY(0);opacity:1} }
+    @keyframes toastDemOut { from{transform:translateX(-50%) translateY(0);opacity:1} to{transform:translateX(-50%) translateY(-20px);opacity:0} }
+    #toast-demanda {
+      position:fixed;bottom:80px;left:50%;transform:translateX(-50%);
+      background:#00C896;color:#fff;border-radius:20px;padding:8px 18px;
+      font-size:13px;font-weight:700;display:none;align-items:center;gap:6px;
+      box-shadow:0 4px 16px rgba(0,200,150,0.4);z-index:9999;white-space:nowrap;
+    }
+    #toast-demanda.show { display:flex; animation:toastDemIn 0.2s ease; }
+    #toast-demanda.hide { animation:toastDemOut 0.2s ease forwards; }
   </style>
 </head>
 <body>
 
+
+<div id="toast-demanda">✅ Demanda lançada!</div>
+
+<div id="pull-indicator"><span>🔄</span></div>
 
 <div class="header" id="header">
 
@@ -478,6 +506,54 @@
     <div id="rolagem-content"></div>
   </div>
 
+  <!-- CONTAS -->
+  <div id="page-df-contas" class="page" style="padding:0 23px">
+    <div class="top-bar">
+      <div><h1>🏦 Contas</h1><div class="subtitle" style="margin-bottom:0">Saldos das suas contas</div></div>
+      <button onclick="toggleContaForm()" id="btn-nova-conta" class="btn-primary" style="font-size:12px;padding:8px 14px">➕ Nova Conta</button>
+    </div>
+
+    <!-- Form -->
+    <div id="conta-form-card" class="card" style="display:none;margin-bottom:14px;padding:18px">
+      <div style="font-size:10px;font-weight:700;color:#aaa;margin-bottom:8px">COR DA CONTA</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px" id="conta-cores">
+        <div onclick="selecionarCorConta('#8A05BE')" class="cor-opt" style="width:28px;height:28px;border-radius:50%;background:#8A05BE;cursor:pointer;border:3px solid transparent"></div>
+        <div onclick="selecionarCorConta('#FF6B00')" class="cor-opt" style="width:28px;height:28px;border-radius:50%;background:#FF6B00;cursor:pointer;border:3px solid transparent"></div>
+        <div onclick="selecionarCorConta('#00C896')" class="cor-opt" style="width:28px;height:28px;border-radius:50%;background:#00C896;cursor:pointer;border:3px solid transparent"></div>
+        <div onclick="selecionarCorConta('#3B82F6')" class="cor-opt" style="width:28px;height:28px;border-radius:50%;background:#3B82F6;cursor:pointer;border:3px solid transparent"></div>
+        <div onclick="selecionarCorConta('#EF4444')" class="cor-opt" style="width:28px;height:28px;border-radius:50%;background:#EF4444;cursor:pointer;border:3px solid transparent"></div>
+        <div onclick="selecionarCorConta('#F59E0B')" class="cor-opt" style="width:28px;height:28px;border-radius:50%;background:#F59E0B;cursor:pointer;border:3px solid transparent"></div>
+        <div onclick="selecionarCorConta('#10B981')" class="cor-opt" style="width:28px;height:28px;border-radius:50%;background:#10B981;cursor:pointer;border:3px solid transparent"></div>
+        <div onclick="selecionarCorConta('#EC4899')" class="cor-opt" style="width:28px;height:28px;border-radius:50%;background:#EC4899;cursor:pointer;border:3px solid transparent"></div>
+        <div onclick="selecionarCorConta('#1A1A2E')" class="cor-opt" style="width:28px;height:28px;border-radius:50%;background:#1A1A2E;cursor:pointer;border:3px solid transparent"></div>
+        <div onclick="selecionarCorConta('#6366F1')" class="cor-opt" style="width:28px;height:28px;border-radius:50%;background:#6366F1;cursor:pointer;border:3px solid transparent"></div>
+      </div>
+      <div class="grid-2" style="margin-bottom:12px">
+        <div><label class="form-label">NOME DA CONTA</label><input class="form-input" id="conta-nome" placeholder="Ex: Nubank"/></div>
+        <div><label class="form-label">SALDO ATUAL (R$)</label><input class="form-input" type="number" id="conta-saldo" placeholder="0,00"/></div>
+      </div>
+      <div style="margin-bottom:14px">
+        <label class="form-label">ATUALIZAR A CADA</label>
+        <select class="form-input" id="conta-intervalo">
+          <option value="3">3 dias</option>
+          <option value="5">5 dias</option>
+          <option value="7">7 dias</option>
+          <option value="15">15 dias</option>
+          <option value="30">30 dias</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn-primary" onclick="salvarConta()" style="flex:1">✅ Salvar</button>
+        <button onclick="toggleContaForm()" style="flex:1;padding:12px;border-radius:12px;border:1.5px solid #aaa;background:#fff;color:#888;font-size:13px;font-weight:700;cursor:pointer">✖️ Cancelar</button>
+      </div>
+    </div>
+
+    <!-- Total -->
+    <div id="contas-total-card"></div>
+    <!-- Lista -->
+    <div id="lista-contas"></div>
+  </div>
+
   <!-- MILAGRE -->
   <div id="page-df-milagre" class="page">
     <div class="top-bar">
@@ -730,7 +806,7 @@
       <button class="btn-new" id="btn-new-reg" onclick="navTo('demandas')">+ Nova</button>
     </div>
     <div class="filters">
-      <input class="filter-input" id="busca" placeholder="🔍 Local ou responsável..." oninput="renderRegistros()" />
+      <input class="filter-input" id="busca" placeholder="🔍 Nome, local ou responsável..." oninput="renderRegistros()" />
       <select class="filter-select" id="filtro-mes" onchange="renderRegistros()">
         <option value="Todos">Todos os meses</option>
       </select>
@@ -1125,6 +1201,7 @@ const ABAS_EMP = [
     {id:'df-gasolina',   label:'⛽️ Gasolina'},
     {id:'df-fixas',      label:'📋 Fixas'},
     {id:'df-renda',      label:'💶 Renda'},
+    {id:'df-contas',     label:'🏦 Contas'},
     {id:'df-rolagem',    label:'🔂 Rolagem'},
     {id:'df-milagre',    label:'🙏 Milagre'},
   ],
@@ -1184,6 +1261,7 @@ function navTo(page,noReset){
   if(page==='df-compras'){ renderCompras(); popularSelectCartoes(); }
   if(page==='df-fixas') renderFixas();
   if(page==='df-milagre') renderMilagre();
+  if(page==='df-contas') renderContas();
   if(page==='df-rolagem') renderRolagem();
   if(page==='df-renda') renderRenda();
   if(page==='df-gasolina') renderGasolina();
@@ -2412,7 +2490,7 @@ function salvarDemanda(){
   const dfc=document.getElementById('demanda-form-card'); if(dfc) dfc.style.display='none';
   const bnd=document.getElementById('btn-nova-demanda'); if(bnd) bnd.textContent='➕ Nova Demanda';
   document.getElementById('d-btn-cancelar').style.display='none';
-  mostrarSucesso(); renderDemandas();
+  mostrarToastDemanda(); renderDemandas();
 }
 
 function cancelarDemanda(){
@@ -2481,7 +2559,7 @@ function renderRegistros(){
   const tipo=document.getElementById('filtro-tipo').value;
   const lista=registros.filter(r=>
     (mes==='Todos'||r.mes===mes)&&(tipo==='Todos'||r.tipo===tipo)&&
-    (!busca||r.local.toLowerCase().includes(busca)||r.responsavel.toLowerCase().includes(busca))
+    (!busca||(r.local||'').toLowerCase().includes(busca)||(r.responsavel||'').toLowerCase().includes(busca)||(r.nomeCliente||'').toLowerCase().includes(busca)||(r.tipo||'').toLowerCase().includes(busca))
   ).sort((a,b)=>b.id-a.id);
   document.getElementById('reg-count').textContent=`${lista.length} operações encontradas`;
   document.getElementById('reg-count').style.color=e.textSub;
@@ -2605,6 +2683,17 @@ function excluirReg(id){
 // =====================
 // UTILS
 // =====================
+function mostrarToastDemanda(){
+  const el = document.getElementById('toast-demanda');
+  if(!el) return;
+  el.classList.remove('hide');
+  el.classList.add('show');
+  setTimeout(()=>{
+    el.classList.add('hide');
+    setTimeout(()=>{ el.classList.remove('show','hide'); },200);
+  },700);
+}
+
 function mostrarSucesso(){
   const el=document.getElementById('sucesso');
   el.style.display='flex';
@@ -3643,6 +3732,198 @@ function rolarTudoCartao(){
   });
 }
 
+// ===== PULL TO REFRESH =====
+(function(){
+  let startY=0, pulling=false, threshold=70;
+  const indicator = document.getElementById('pull-indicator');
+
+  function getCurrentPage(){
+    const pages = document.querySelectorAll('.page');
+    for(const p of pages){ if(p.style.display!=='none') return p.id; }
+    return null;
+  }
+
+  function refreshCurrentPage(){
+    const page = getCurrentPage();
+    if(!page) return;
+    if(page==='page-painel') renderPainel();
+    else if(page==='page-demandas') renderDemandas();
+    else if(page==='page-rota') renderRota();
+    else if(page==='page-registros') renderRegistros();
+    else if(page==='page-condicao') renderCondicao();
+    else if(page==='page-df-painel') renderDFPainel();
+    else if(page==='page-df-cartoes') renderCartoes();
+    else if(page==='page-df-compras') renderCompras();
+    else if(page==='page-df-fixas') renderFixas();
+    else if(page==='page-df-renda') renderRenda();
+    else if(page==='page-df-contas') renderContas();
+    else if(page==='page-df-milagre') renderMilagre();
+    else if(page==='page-df-rolagem') renderRolagem();
+    else if(page==='page-km-dia') renderKmDia();
+    else if(page==='page-km-mes') renderKmMes();
+    else if(page==='page-meta') renderMeta();
+    else if(page==='page-valor-dia') renderValorDia();
+    else if(page==='page-valor-mes') renderValorMes();
+  }
+
+  document.addEventListener('touchstart', e=>{
+    if(window.scrollY===0) { startY=e.touches[0].clientY; pulling=true; }
+  }, {passive:true});
+
+  document.addEventListener('touchmove', e=>{
+    if(!pulling) return;
+    const dy = e.touches[0].clientY - startY;
+    if(dy>0 && dy<threshold+30){
+      indicator.classList.add('show');
+      indicator.style.opacity = Math.min(1, dy/threshold);
+    }
+  }, {passive:true});
+
+  document.addEventListener('touchend', e=>{
+    if(!pulling) return;
+    pulling=false;
+    const dy = e.changedTouches[0].clientY - startY;
+    if(dy>threshold){
+      indicator.classList.add('spinning');
+      setTimeout(()=>{
+        refreshCurrentPage();
+        setTimeout(()=>{
+          indicator.classList.remove('show','spinning');
+          indicator.style.opacity='1';
+        }, 400);
+      }, 500);
+    } else {
+      indicator.classList.remove('show');
+      indicator.style.opacity='1';
+    }
+  }, {passive:true});
+})();
+
+
+let contaCorSelecionada = '#8A05BE';
+let editandoContaId = null;
+
+function getContas(){ return ls('df_contas',[]); }
+function salvarContas(d){ lsSet('df_contas',d); }
+
+function selecionarCorConta(cor){
+  contaCorSelecionada = cor;
+  document.querySelectorAll('.cor-opt').forEach(el=>{
+    el.style.border='3px solid transparent';
+    el.classList.remove('selected');
+  });
+  const els = document.querySelectorAll('.cor-opt');
+  els.forEach(el=>{ if(el.getAttribute('onclick')&&el.getAttribute('onclick').includes(cor)){ el.style.border='3px solid #1A1A2E'; el.classList.add('selected'); } });
+}
+
+function toggleContaForm(){
+  const card = document.getElementById('conta-form-card');
+  const btn = document.getElementById('btn-nova-conta');
+  if(!card) return;
+  const visible = card.style.display!=='none';
+  card.style.display = visible?'none':'block';
+  btn.textContent = visible?'➕ Nova Conta':'✖️ Cancelar';
+  if(visible){ editandoContaId=null; limparContaForm(); }
+}
+
+function limparContaForm(){
+  const n=document.getElementById('conta-nome'); if(n) n.value='';
+  const s=document.getElementById('conta-saldo'); if(s) s.value='';
+  const i=document.getElementById('conta-intervalo'); if(i) i.value='7';
+  contaCorSelecionada='#8A05BE';
+  document.querySelectorAll('.cor-opt').forEach((el,idx)=>{ el.style.border='3px solid transparent'; if(idx===0) el.style.border='3px solid #1A1A2E'; });
+}
+
+function salvarConta(){
+  const nome = document.getElementById('conta-nome')?.value.trim();
+  const saldo = parseFloat(document.getElementById('conta-saldo')?.value)||0;
+  const intervalo = parseInt(document.getElementById('conta-intervalo')?.value)||7;
+  if(!nome){ alert('Digite o nome da conta!'); return; }
+  let contas = getContas();
+  if(editandoContaId){
+    contas = contas.map(c=>c.id===editandoContaId?{...c,nome,saldo,intervalo,cor:contaCorSelecionada}:c);
+  } else {
+    contas.push({id:Date.now(),nome,saldo,intervalo,cor:contaCorSelecionada,ultimaAtt:todayStr()});
+  }
+  salvarContas(contas);
+  toggleContaForm();
+  renderContas();
+}
+
+function atualizarSaldoConta(id){
+  const novoSaldo = parseFloat(prompt('Novo saldo (R$):'));
+  if(isNaN(novoSaldo)) return;
+  let contas = getContas();
+  contas = contas.map(c=>c.id===id?{...c,saldo:novoSaldo,ultimaAtt:todayStr()}:c);
+  salvarContas(contas);
+  renderContas();
+}
+
+function editarConta(id){
+  const c = getContas().find(x=>x.id===id);
+  if(!c) return;
+  editandoContaId=id;
+  const n=document.getElementById('conta-nome'); if(n) n.value=c.nome;
+  const s=document.getElementById('conta-saldo'); if(s) s.value=c.saldo;
+  const i=document.getElementById('conta-intervalo'); if(i) i.value=c.intervalo;
+  contaCorSelecionada=c.cor;
+  document.querySelectorAll('.cor-opt').forEach(el=>{ el.style.border='3px solid transparent'; if(el.getAttribute('onclick')?.includes(c.cor)) el.style.border='3px solid #1A1A2E'; });
+  const card=document.getElementById('conta-form-card'); if(card) card.style.display='block';
+  document.getElementById('btn-nova-conta').textContent='✖️ Cancelar';
+  card?.scrollIntoView({behavior:'smooth'});
+}
+
+function excluirConta(id){
+  if(!confirm('Excluir esta conta?')) return;
+  salvarContas(getContas().filter(c=>c.id!==id));
+  renderContas();
+}
+
+function renderContas(){
+  const contas = getContas();
+  const hoje = new Date();
+  const totalSaldo = contas.reduce((a,c)=>a+c.saldo,0);
+  const totalEl = document.getElementById('contas-total-card');
+  const listaEl = document.getElementById('lista-contas');
+  if(!totalEl||!listaEl) return;
+
+  totalEl.innerHTML = contas.length>0?`
+    <div style="background:linear-gradient(135deg,#1A0A2E,#4C1D95);border-radius:20px;padding:18px;margin-bottom:14px">
+      <div style="font-size:10px;color:rgba(255,255,255,0.5);margin-bottom:4px">💰 TOTAL EM CONTAS</div>
+      <div style="font-size:32px;font-weight:900;color:#fff">${fmtReal(totalSaldo)}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:12px">
+        ${contas.map(c=>`<span style="background:${c.cor};border-radius:8px;padding:3px 9px;font-size:10px;font-weight:700;color:#fff">${c.nome} ${fmtReal(c.saldo)}</span>`).join('')}
+      </div>
+    </div>`:'';
+
+  if(contas.length===0){ listaEl.innerHTML='<div class="empty">Nenhuma conta cadastrada ainda.</div>'; return; }
+
+  listaEl.innerHTML = contas.map(c=>{
+    const ultima = c.ultimaAtt?new Date(c.ultimaAtt+'T12:00:00'):new Date(0);
+    const diffDias = Math.floor((hoje-ultima)/(1000*60*60*24));
+    const diasRestantes = Math.max(0, c.intervalo-diffDias);
+    const vencido = diasRestantes===0;
+    const pctTempo = Math.min(100,Math.round((diffDias/c.intervalo)*100));
+    return `<div style="background:linear-gradient(135deg,${c.cor}BB,${c.cor});border-radius:20px;padding:20px;margin-bottom:12px;animation:contaFadeUp 0.5s ease">
+      <div style="font-size:11px;color:rgba(255,255,255,0.7);margin-bottom:4px${vencido?';animation:contaBlink 1s infinite':''}">
+        ${vencido?'⚠️ VENCIDO — Atualize agora!':'🏦 '+c.nome}
+      </div>
+      <div style="font-size:30px;font-weight:900;color:#fff;animation:contaPulse 2s infinite">${fmtReal(c.saldo)}</div>
+      <div style="height:4px;background:rgba(255,255,255,0.2);border-radius:2px;margin:12px 0">
+        <div style="height:100%;width:${pctTempo}%;background:#fff;border-radius:2px"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="font-size:10px;color:rgba(255,255,255,0.7)">${vencido?'⚠️ Atualização vencida!':'⏰ '+diasRestantes+'d restantes'}</div>
+        <div style="display:flex;gap:6px">
+          <button onclick="editarConta(${c.id})" style="background:rgba(255,255,255,0.15);border:none;color:#fff;border-radius:8px;padding:5px 8px;font-size:12px;cursor:pointer">✏️</button>
+          <button onclick="excluirConta(${c.id})" style="background:rgba(255,255,255,0.15);border:none;color:#fff;border-radius:8px;padding:5px 8px;font-size:12px;cursor:pointer">🗑️</button>
+          <button onclick="atualizarSaldoConta(${c.id})" style="background:rgba(255,255,255,0.25);border:1px solid rgba(255,255,255,0.5);color:#fff;border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer${vencido?';animation:contaPulse 1s infinite':''}">↻ Atualizar</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
 function toggleMilagreDetalhe(tipo){
   const elCartoes = document.getElementById('milagre-det-cartoes');
   const elFixas = document.getElementById('milagre-det-fixas');
@@ -3935,10 +4216,13 @@ function toggleDespesasPainel(){
       return {id:f.id, nome:f.desc, valor:f.valor, pago, temporaria:f.temporaria, duracao:f.duracao, mesesPagos:(f.mesesPagos||[]).length, parcelasHTML};
     }).filter(Boolean);
 
-    const totalBruto = cartaoItems.reduce((a,c)=>a+c.total,0) + fixaItems.reduce((a,f)=>a+f.valor,0);
+    // Gasolina do mês
+    const gasItens = getGasolina().filter(g=>MESES[new Date(g.data+'T12:00:00').getMonth()]===mesFiltro);
+    const totalGas = gasItens.reduce((a,g)=>a+g.valor,0);
+
+    const totalBruto = cartaoItems.reduce((a,c)=>a+c.total,0) + fixaItems.reduce((a,f)=>a+f.valor,0) + totalGas;
     const totalPago = cartaoItems.filter(c=>c.todasPagas).reduce((a,c)=>a+c.total,0) + fixaItems.filter(f=>f.pago).reduce((a,f)=>a+f.valor,0);
     const totalFalta = totalBruto - totalPago;
-
     el.innerHTML=`
       <div style="font-size:12px;font-weight:700;color:#555;margin-bottom:8px">💸 Todas as Despesas — ${mesFiltro}</div>
       <div style="display:flex;justify-content:space-between;margin-bottom:10px;padding:8px 0;border-bottom:2px solid #f0f0f0">
@@ -3968,7 +4252,14 @@ function toggleDespesasPainel(){
             ${f.temporaria?`<span style="font-size:10px;color:#aaa">▾</span>`:''}
           </div>
           ${f.temporaria?`<div style="display:none">${f.parcelasHTML}</div>`:''}
-        </div>`).join('')}`;
+        </div>`).join('')}
+      ${totalGas>0?`
+        <div style="font-size:10px;font-weight:700;color:#aaa;margin:10px 0 4px">⛽️ GASOLINA</div>
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 0">
+          <div style="width:8px;height:8px;border-radius:50%;background:#F97316;flex-shrink:0"></div>
+          <div style="flex:1;font-size:13px;font-weight:600">${gasItens.length} abastecimento${gasItens.length>1?'s':''} em ${mesFiltro}</div>
+          <div style="font-size:13px;font-weight:800;color:#F97316">${fmtReal(totalGas)}</div>
+        </div>`:''}`;
   }
   el.style.display = visible ? 'none' : 'block';
 }
