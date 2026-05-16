@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
@@ -2923,7 +2923,7 @@ function renderCartoes(){
       .sort((a,b)=> a.ano!==b.ano ? a.ano-b.ano : MESES.indexOf(a.mes)-MESES.indexOf(b.mes))
       .map(p=>p.mes);
     const mesesComCompras = [...new Set(mesesUnicos)];
-    const comprasMes=compras.filter(p=>p.cartaoId===c.id&&p.parcelas.some(x=>x.mes===mesFiltro&&(!x.ano||x.ano===new Date().getFullYear())Cartao&&(!x.ano||x.ano===new Date().getFullYear())));
+    const comprasMes=compras.filter(p=>p.cartaoId===c.id&&p.parcelas.some(x=>x.mes===mesFiltro&&(!x.ano||x.ano===new Date().getFullYear())));
     const listaCompras=openCard?`
       <div style="border-top:1px solid #f0f0f0;margin-top:12px;padding-top:12px" onclick="event.stopPropagation()">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
@@ -2934,7 +2934,7 @@ function renderCartoes(){
         </div>
         ${comprasMes.length===0?`<div style="text-align:center;opacity:0.4;font-size:13px;padding:10px 0">Nenhuma compra em ${mesFiltroCartao}</div>`:''}
         ${comprasMes.map(p=>{
-          const parc=p.parcelas.find(x=>x.mes===mesFiltro&&(!x.ano||x.ano===new Date().getFullYear())Cartao&&(!x.ano||x.ano===new Date().getFullYear()));
+          const parc=p.parcelas.find(x=>x.mes===mesFiltro&&(!x.ano||x.ano===new Date().getFullYear()));
           const pago=parc&&(p.parcelasPagas||[]).includes(parc.num);
           return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f9f9f9">
             <div style="flex:1">
@@ -3000,7 +3000,7 @@ function renderCartoes(){
           <button onclick="editarCartao(${c.id})" style="background:${c.cor}18;border:1px solid ${c.cor};color:${c.cor};padding:6px 12px;border-radius:8px;cursor:pointer;font-weight:600;font-size:12px">✏️ Editar</button>
           <button onclick="excluirCartao(${c.id})" style="background:rgba(239,68,68,0.08);border:1px solid #EF4444;color:#EF4444;padding:6px 12px;border-radius:8px;cursor:pointer;font-weight:600;font-size:12px">🗑️ Excluir</button>
         </div>
-        ${openCard&&comprasMes.length>0?`<div style="display:inline-flex;align-items:center;gap:6px;background:${c.cor}15;border-radius:8px;padding:5px 10px"><span style="font-size:11px;color:${c.cor};font-weight:600">Total ${mesFiltroCartao}</span><span style="font-size:15px;font-weight:800;color:${c.cor}">${fmtReal(comprasMes.reduce((a,p)=>{const parc=p.parcelas.find(x=>x.mes===mesFiltro&&(!x.ano||x.ano===new Date().getFullYear())Cartao&&(!x.ano||x.ano===new Date().getFullYear()));const pago=parc&&(p.parcelasPagas||[]).includes(parc.num);return a+(pago?0:(parc?parc.valor:0));},0))}</span></div>`:''}
+        ${openCard&&comprasMes.length>0?`<div style="display:inline-flex;align-items:center;gap:6px;background:${c.cor}15;border-radius:8px;padding:5px 10px"><span style="font-size:11px;color:${c.cor};font-weight:600">Total ${mesFiltroCartao}</span><span style="font-size:15px;font-weight:800;color:${c.cor}">${fmtReal(comprasMes.reduce((a,p)=>{const parc=p.parcelas.find(x=>x.mes===mesFiltro&&(!x.ano||x.ano===new Date().getFullYear()));const pago=parc&&(p.parcelasPagas||[]).includes(parc.num);return a+(pago?0:(parc?parc.valor:0));},0))}</span></div>`:''}
       </div>
     </div>`;
   }).join('');
@@ -5114,3 +5114,4 @@ renderPainel();
 </script>
 </body>
 </html>
+
