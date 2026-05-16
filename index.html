@@ -313,6 +313,9 @@
   <div id="page-df-cartoes" class="page">
     <div class="top-bar">
       <div><h1>💳 Cartões</h1><div class="subtitle" style="margin-bottom:0">Seus cartões de crédito</div></div>
+      <select class="mes-select" id="cartoes-mes-filtro" onchange="renderCartoes()" style="font-size:12px">
+        <option value="Todos">Todos</option>
+      </select>
     </div>
 
     <button onclick="toggleCartaoForm()" id="btn-novo-cartao" style="width:100%;padding:13px;border-radius:14px;border:2px dashed #1A1A2E;background:#F8F8F8;color:#1A1A2E;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:12px">➕ Novo Cartão</button>
@@ -615,7 +618,7 @@
       </select>
     </div>
     <div id="painel-stats" style="margin-bottom:12px"></div>
-    <div class="grid-2" id="painel-tipos"></div>
+    <div id="painel-tipos" style="margin-bottom:12px"></div>
     <div class="card">
       <div class="section-header">
         <span class="section-title">Últimos Registros</span>
@@ -2874,7 +2877,13 @@ function setCartaoMes(id,mes,e){ if(e)e.stopPropagation(); cartaoMesFiltro[id]=m
 function renderCartoes(){
   const cartoes=getCartoes().sort((a,b)=>(parseInt(a.venc)||31)-(parseInt(b.venc)||31));
   const compras=getCompras();
-  const mesAtual=MESES[new Date().getMonth()];
+  // Populate mes select
+  const mesSelEl = document.getElementById('cartoes-mes-filtro');
+  if(mesSelEl){
+    popularMesesSelect('cartoes-mes-filtro');
+  }
+  const mesFiltroCartoes = mesSelEl?.value==='Todos'?MESES[new Date().getMonth()]:(mesSelEl?.value||MESES[new Date().getMonth()]);
+  const mesAtual = mesFiltroCartoes;
   if(cartoes.length===0){
     document.getElementById('lista-df-cartoes').innerHTML='<div class="empty">Nenhum cartão cadastrado ainda.</div>';return;
   }
@@ -3911,7 +3920,52 @@ function renderContas(){
   const listaEl = document.getElementById('lista-contas');
   if(!totalEl||!listaEl) return;
 
-  totalEl.innerHTML = contas.length>0?`
+  // Crédito disponível dos cartões
+  const cartoes = getCartoes();
+  const compras = getCompras();
+  const creditoPorCartao = cartoes.map(c=>{
+    if(!c.limite||c.limite<=0) return null;
+    const usado = compras.filter(p=>p.cartaoId===c.id).reduce((a,p)=>a+p.parcelas.reduce((b,parc)=>{
+      const pg=(p.parcelasPagas||[]).includes(parc.num); return b+(pg?0:parc.valor);
+    },0),0);
+    const disp = Math.max(0, c.limite - usado);
+    return {nome:c.nome, cor:c.cor, disp, limite:c.limite};
+  }).filter(Boolean);
+  const totalCredito = creditoPorCartao.reduce((a,c)=>a+c.disp,0);
+  const totalLimite = creditoPorCartao.reduce((a,c)=>a+c.limite,0);
+
+  // D4 donut segmentado
+  const CIRC = 2*Math.PI*35;
+  let offset = 0;
+  const segs = creditoPorCartao.map(c=>{
+    const pct = totalCredito>0?c.disp/totalCredito:0;
+    const dash = (pct*CIRC).toFixed(2);
+    const gap = (CIRC-parseFloat(dash)).toFixed(2);
+    const s = `<circle cx="45" cy="45" r="35" fill="none" stroke="${c.cor}" stroke-width="12" stroke-dasharray="${dash} ${gap}" stroke-dashoffset="${(-offset).toFixed(2)}" transform="rotate(-90 45 45)" style="animation:contaPulse 2s infinite"/>`;
+    offset += parseFloat(dash);
+    return s;
+  }).join('');
+
+  const creditoHTML = creditoPorCartao.length>0?`
+    <div style="background:#1A0A2E;border-radius:16px;padding:16px;margin-bottom:12px;display:flex;align-items:center;gap:14px">
+      <div style="position:relative;width:90px;height:90px;flex-shrink:0">
+        <svg width="90" height="90" viewBox="0 0 90 90">
+          <circle cx="45" cy="45" r="35" fill="none" stroke="#222" stroke-width="12"/>
+          ${segs}
+        </svg>
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center">
+          <div style="font-size:12px;font-weight:900;color:#fff">${fmtReal(totalCredito)}</div>
+          <div style="font-size:8px;color:rgba(255,255,255,0.5)">livre</div>
+        </div>
+      </div>
+      <div style="flex:1">
+        <div style="font-size:10px;color:rgba(255,255,255,0.5);margin-bottom:6px;letter-spacing:1px">💳 CRÉDITO DISPONÍVEL</div>
+        <div style="font-size:22px;font-weight:900;color:#fff;animation:contaPulse 2s infinite">${fmtReal(totalCredito)}</div>
+        ${creditoPorCartao.map(c=>`<div style="font-size:10px;margin-top:4px"><span style="color:${c.cor}">●</span> <span style="color:rgba(255,255,255,0.7)">${c.nome} ${fmtReal(c.disp)}</span></div>`).join('')}
+      </div>
+    </div>`:'';
+
+  totalEl.innerHTML = creditoHTML + (contas.length>0?`
     <div style="background:#E8F5E9;border-radius:20px;padding:20px;margin-bottom:14px;box-shadow:8px 8px 16px #c8d8c9,-8px -8px 16px #fff">
       <div style="text-align:center;margin-bottom:16px">
         <div style="font-size:10px;color:#555;margin-bottom:4px;font-weight:600;letter-spacing:1px">💰 TOTAL EM CONTAS</div>
@@ -3924,7 +3978,7 @@ function renderContas(){
             <div style="font-size:15px;font-weight:900;color:#2E7D32">${fmtReal(c.saldo)}</div>
           </div>`).join('')}
       </div>
-    </div>`:'';
+    </div>`:'');
 
   if(contas.length===0){ listaEl.innerHTML='<div class="empty">Nenhuma conta cadastrada ainda.</div>'; return; }
 
@@ -4538,7 +4592,7 @@ function renderDFPainel(){
         </div>
 
         <!-- LEGENDA -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%">
+        <div style="display:flex;flex-direction:column;gap:8px;width:100%">
           ${legendaCartoes}
           ${totalFixas>0?`
           <div style="background:#F5F0FF;border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:8px">
@@ -4548,7 +4602,7 @@ function renderDFPainel(){
             <div style="font-weight:800;color:#DC2626;font-size:13px">${fmtReal(totalFixas)}</div>
           </div>`:''}
           ${totalGasolina>0?`<div style="background:#FFF7ED;border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:8px"><div style="width:10px;height:10px;border-radius:50%;background:#F97316;flex-shrink:0"></div><div style="flex:1;font-size:11px;font-weight:600;color:#1A0A2E">⛽️ Gasolina</div><div style="font-weight:800;color:#F97316;font-size:13px">${fmtReal(totalGasolina)}</div></div>`:''}
-          ${cartoes.length===0&&totalGasolina===0?`<div style="grid-column:1/-1;text-align:center;opacity:0.45;font-size:13px;padding:12px">Adicione cartões para ver o gráfico</div>`:''}
+          ${cartoes.length===0&&totalGasolina===0?`<div style="text-align:center;opacity:0.45;font-size:13px;padding:12px">Adicione cartões para ver o gráfico</div>`:''}
         </div>
       </div>
     </div>
