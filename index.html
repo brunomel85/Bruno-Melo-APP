@@ -1910,6 +1910,10 @@ function renderRota(){
       <div class="rota-body">
         <div class="rota-cliente">${p.cliente}${p.carregadaAuto?` <span style="background:#FEF3C7;color:#92400E;border-radius:4px;padding:1px 5px;font-size:9px;font-weight:700">↩️ ontem</span>`:''}</div>
         <div class="rota-local">📍 ${p.local}</div>
+        ${p.endereco?`<div style="display:flex;align-items:center;gap:6px;margin-top:4px">
+          <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.endereco)}" target="_blank" style="font-size:12px;color:#3B82F6;font-weight:600;text-decoration:underline;flex:1">🗺️ ${p.endereco}</a>
+          <button onclick="event.stopPropagation();navigator.clipboard.writeText('${(p.endereco||'').replace(/'/g,"\\'")}').then(()=>mostrarSucesso())" style="background:#3B82F615;border:none;color:#3B82F6;border-radius:6px;padding:2px 7px;font-size:10px;font-weight:700;cursor:pointer">📋</button>
+        </div>`:''}
         <div class="rota-tipo" style="color:${bg}">${icon} ${p.tipo}${p.qtd?' · Qtd: '+p.qtd:''}${p.qtdBobinas?' · 🧻 '+p.qtdBobinas:''}</div>
         ${p.obs?`<div style="font-size:11px;opacity:0.55;margin-top:3px">💬 ${p.obs}</div>`:''}
         <div style="display:flex;gap:5px;margin-top:8px;flex-wrap:wrap">
@@ -2041,7 +2045,15 @@ function renderDemandas(){
   const filtro=document.getElementById('filtro-status-dem').value;
   document.getElementById('demandas-sub').style.color=e.textSub;
   document.getElementById('d-btn-salvar').style.background=`linear-gradient(135deg,${e.primary},${e.primaryDark})`;
-  const lista=filtro==='Todos'?demandas:demandas.filter(d=>d.status===filtro);
+  const busca=(document.getElementById('busca-demandas')?.value||'').toLowerCase();
+  const lista=(filtro==='Todos'?demandas:demandas.filter(d=>d.status===filtro)).filter(d=>{
+    if(!busca) return true;
+    return (d.titulo||'').toLowerCase().includes(busca)||
+           (d.local||'').toLowerCase().includes(busca)||
+           (d.solicitante||'').toLowerCase().includes(busca)||
+           (d.responsavel||'').toLowerCase().includes(busca)||
+           (d.correiosCliente||'').toLowerCase().includes(busca);
+  });
   const sorted=[...lista].sort((a,b)=>{
     const da=a.dataCriacao||'0000-00-00';
     const db=b.dataCriacao||'0000-00-00';
@@ -2230,7 +2242,9 @@ function toggleRotaDia(id){
     paradas.push({
       id:Date.now(),demandaId:id,
       cliente:d.titulo,local:d.local||d.titulo,
+      endereco:d.endereco||'',
       tipo:d.prazo||'Entrega',qtd:d.qtd||0,
+      qtdBobinas:d.qtdBobinas||0,
       obs:`Demanda: ${d.prioridade} prioridade`,concluido:false
     });
     salvarRota(empresaAtual,data,paradas);
