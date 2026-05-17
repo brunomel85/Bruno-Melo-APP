@@ -2883,8 +2883,8 @@ function renderCartoes(){
   if(mesSelEl){
     popularMesesSelect('cartoes-mes-filtro');
   }
-  const mesFiltroCartoes = mesSelEl?.value==='Todos'?MESES[new Date().getMonth()]:(mesSelEl?.value||MESES[new Date().getMonth()]);
-  const mesAtual = mesFiltroCartoes;
+  const mesAtual = MESES[new Date().getMonth()]; // mês real sempre
+  const mesFiltroCartoes = mesSelEl?.value==='Todos'?mesAtual:(mesSelEl?.value||mesAtual);
   if(cartoes.length===0){
     document.getElementById('lista-df-cartoes').innerHTML='<div class="empty">Nenhum cartão cadastrado ainda.</div>';return;
   }
@@ -4522,7 +4522,11 @@ function renderDFPainel(){
     const mesAtualStr=MESES[new Date().getMonth()];
     const idxMesAtual=MESES.indexOf(mesAtualStr);
     const totalAtrasado=getCompras().filter(p=>p.cartaoId===c.id).reduce((a,p)=>{
-      return a+p.parcelas.filter(parc=>MESES.indexOf(parc.mes)<idxMesAtual).reduce((b,parc)=>{
+      return a+p.parcelas.filter(parc=>{
+        const anoParc=parc.ano||new Date().getFullYear();
+        const anoAt=new Date().getFullYear();
+        return (anoParc<anoAt||(anoParc===anoAt&&MESES.indexOf(parc.mes)<idxMesAtual));
+      }).reduce((b,parc)=>{
         const pg=(p.parcelasPagas||[]).includes(parc.num);
         return b+(pg?0:parc.valor);
       },0);
