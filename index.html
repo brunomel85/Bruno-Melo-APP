@@ -318,6 +318,9 @@
       </select>
     </div>
 
+    <!-- M22 total do mês -->
+    <div id="cartoes-total-mes" style="display:flex;align-items:center;gap:12px;justify-content:flex-end;padding:6px 0 6px"></div>
+
     <button onclick="toggleCartaoForm()" id="btn-novo-cartao" style="width:100%;padding:13px;border-radius:14px;border:2px dashed #1A1A2E;background:#F8F8F8;color:#1A1A2E;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:12px">➕ Novo Cartão</button>
 
     <div id="cartao-form-card" class="card" style="padding:20px;margin-bottom:16px;display:none">
@@ -2885,13 +2888,86 @@ function renderCartoes(){
   }
   const mesAtual = MESES[new Date().getMonth()]; // mês real sempre
   const mesFiltroCartoes = mesSelEl?.value==='Todos'?mesAtual:(mesSelEl?.value||mesAtual);
+  const mesParaFiltroGlobal = mesFiltroCartoes;
+  const anoParaFiltroGlobal = new Date().getFullYear() + (MESES.indexOf(mesParaFiltroGlobal) < MESES.indexOf(mesAtual) ? 1 : 0);
   if(cartoes.length===0){
     document.getElementById('lista-df-cartoes').innerHTML='<div class="empty">Nenhum cartão cadastrado ainda.</div>';return;
   }
+  // M22 — Total do mês com donut clicável
+  const totalMesGeral = cartoes.reduce((a,c)=>{
+    const comprasC = compras.filter(p=>p.cartaoId===c.id&&p.parcelas.some(x=>x.mes===mesParaFiltroGlobal&&(x.ano||new Date().getFullYear())===anoParaFiltroGlobal));
+    return a+comprasC.reduce((b,p)=>{ const parc=p.parcelas.find(x=>x.mes===mesParaFiltroGlobal&&(x.ano||new Date().getFullYear())===anoParaFiltroGlobal); return b+(parc?parc.valor:0); },0);
+  },0);
+  const totalMesPago = cartoes.reduce((a,c)=>{
+    const comprasC = compras.filter(p=>p.cartaoId===c.id&&p.parcelas.some(x=>x.mes===mesParaFiltroGlobal&&(x.ano||new Date().getFullYear())===anoParaFiltroGlobal));
+    return a+comprasC.reduce((b,p)=>{ const parc=p.parcelas.find(x=>x.mes===mesParaFiltroGlobal&&(x.ano||new Date().getFullYear())===anoParaFiltroGlobal); const pg=parc&&(p.parcelasPagas||[]).includes(parc.num); return b+(pg&&parc?parc.valor:0); },0);
+  },0);
+  const totalMesFalta = totalMesGeral - totalMesPago;
+  const pctPago = totalMesGeral>0?Math.round((totalMesPago/totalMesGeral)*100):0;
+  const pctFalta = 100-pctPago;
+  const CIRC = 2*Math.PI*19;
+  const dashPago = ((pctPago/100)*CIRC).toFixed(2);
+  const dashFalta = ((pctFalta/100)*CIRC).toFixed(2);
+
+  // Detalhe por cartão
+  const detalheCartoes = cartoes.map(c=>{
+    const comprasC = compras.filter(p=>p.cartaoId===c.id&&p.parcelas.some(x=>x.mes===mesParaFiltroGlobal&&(x.ano||new Date().getFullYear())===anoParaFiltroGlobal));
+    if(comprasC.length===0) return '';
+    const totalC = comprasC.reduce((b,p)=>{ const parc=p.parcelas.find(x=>x.mes===mesParaFiltroGlobal&&(x.ano||new Date().getFullYear())===anoParaFiltroGlobal); return b+(parc?parc.valor:0); },0);
+    const pagoC = comprasC.every(p=>{ const parc=p.parcelas.find(x=>x.mes===mesParaFiltroGlobal&&(x.ano||new Date().getFullYear())===anoParaFiltroGlobal); return parc&&(p.parcelasPagas||[]).includes(parc.num); });
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f5f5f5">
+      <div style="display:flex;align-items:center;gap:6px">
+        <div style="width:8px;height:8px;border-radius:50%;background:${c.cor}"></div>
+        <span style="font-size:12px;font-weight:600">${c.nome}</span>
+        <span style="font-size:10px;color:${pagoC?'#10B981':'#EF4444'}">${pagoC?'pago ✅':'falta ⏳'}</span>
+      </div>
+      <span style="font-size:13px;font-weight:800;color:${c.cor}">${fmtReal(totalC)}</span>
+    </div>`;
+  }).join('');
+
+  const totalEl = document.getElementById('cartoes-total-mes');
+  if(totalEl && totalMesGeral>0){
+    totalEl.innerHTML = `
+      <div style="width:100%">
+        <div onclick="const d=this.nextElementSibling;d.style.display=d.style.display==='none'?'block':'none'" style="display:flex;align-items:center;gap:12px;justify-content:flex-end;cursor:pointer">
+          <div style="flex:1">
+            <div style="height:5px;background:#f0f0f0;border-radius:3px;overflow:hidden;margin-bottom:4px">
+              <div style="height:100%;width:${pctPago}%;background:#10B981;border-radius:3px;transition:width 0.5s"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:10px;font-weight:600">
+              <span style="color:#10B981">✅ ${fmtReal(totalMesPago)} pago</span>
+              <span style="color:#EF4444">⏳ ${fmtReal(totalMesFalta)} falta</span>
+            </div>
+            <div style="font-size:10px;color:#aaa;text-align:right;margin-top:2px">${mesParaFiltroGlobal} · ${cartoes.length} cartão${cartoes.length!==1?'es':''} · <strong style="color:#6D28D9">${fmtReal(totalMesGeral)} total</strong></div>
+          </div>
+          <div style="position:relative;width:50px;height:50px;flex-shrink:0">
+            <svg width="50" height="50" viewBox="0 0 50 50">
+              <circle cx="25" cy="25" r="19" fill="none" stroke="#f0f0f0" stroke-width="7"/>
+              <circle cx="25" cy="25" r="19" fill="none" stroke="#10B981" stroke-width="7" stroke-dasharray="${dashPago} ${CIRC.toFixed(2)}" transform="rotate(-90 25 25)"/>
+              <circle cx="25" cy="25" r="19" fill="none" stroke="#EF4444" stroke-width="7" stroke-dasharray="${dashFalta} ${CIRC.toFixed(2)}" stroke-dashoffset="-${dashPago}" transform="rotate(-90 25 25)"/>
+            </svg>
+            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center">
+              <div style="font-size:8px;font-weight:900;color:#6D28D9">${pctPago}%</div>
+            </div>
+          </div>
+        </div>
+        <div style="display:none;background:#fff;border-radius:12px;padding:12px;margin-top:8px">
+          <div style="font-size:11px;font-weight:700;color:#6D28D9;margin-bottom:6px">💳 Detalhamento — ${mesParaFiltroGlobal}</div>
+          ${detalheCartoes}
+        </div>
+      </div>`;
+  } else if(totalEl) { totalEl.innerHTML=''; }
+
   document.getElementById('lista-df-cartoes').innerHTML=cartoes.map(c=>{
     // Gasto do mês filtrado
     const mesParaFiltro = mesFiltroCartoes;
     const anoParaFiltro = new Date().getFullYear() + (MESES.indexOf(mesParaFiltro) < MESES.indexOf(mesAtual) ? 1 : 0);
+    // Total bruto do mês (sempre mostra, nunca zera)
+    const totalBrutoMes=compras.filter(p=>p.cartaoId===c.id&&p.parcelas.some(x=>x.mes===mesParaFiltro&&(x.ano||new Date().getFullYear())===anoParaFiltro)).reduce((a,p)=>{
+      const parc=p.parcelas.find(x=>x.mes===mesParaFiltro&&(x.ano||new Date().getFullYear())===anoParaFiltro);
+      return a+(parc?parc.valor:0);
+    },0);
+    // Quanto ainda falta pagar (para cálculo do ritmo)
     const gastoMes=compras.filter(p=>p.cartaoId===c.id&&p.parcelas.some(x=>x.mes===mesParaFiltro&&(x.ano||new Date().getFullYear())===anoParaFiltro)).reduce((a,p)=>{
       const parc=p.parcelas.find(x=>x.mes===mesParaFiltro&&(x.ano||new Date().getFullYear())===anoParaFiltro);
       if(!parc) return a;
@@ -2961,8 +3037,9 @@ function renderCartoes(){
       if(!parc) return true;
       return (comp.parcelasPagas||[]).includes(parc.num);
     });
-    const _cardBg = todasPagasC?'#DCFCE7':'#fff';
-    const _cardBorder = todasPagasC?'#10B981':c.cor;
+    // Card só fica verde se tudo pago NO MÊS FILTRADO
+    const _cardBg = todasPagasC&&comprasMes.length>0?'#DCFCE7':'#fff';
+    const _cardBorder = todasPagasC&&comprasMes.length>0?'#10B981':c.cor;
 
     return `<div class="card" id="cartao-card-${c.id}" style="padding:18px;margin-bottom:10px;border-left:4px solid ${_cardBorder};background:${_cardBg};cursor:pointer;transition:all 0.3s" onclick="toggleCartao(${c.id})">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
@@ -2974,12 +3051,12 @@ function renderCartoes(){
           <div style="font-size:12px;opacity:0.55">Vence dia ${c.venc||'—'} · Limite ${c.limite?fmtReal(c.limite):'—'}</div>
         </div>
         <div style="text-align:right">
-          <div style="font-size:16px;font-weight:800;color:${todasPagasC?'#10B981':c.cor}">${todasPagasC?'✅ ':''}${fmtReal(gastoMes)}</div>
+          <div style="font-size:16px;font-weight:800;color:${todasPagasC?'#10B981':c.cor}">${fmtReal(totalBrutoMes)}${todasPagasC?' ✅':''}</div>
           <div style="font-size:10px;opacity:0.55">este mês</div>
         </div>
       </div>
-      ${!todasPagasC&&comprasMes.length>0?`<div style="display:flex;justify-content:flex-end;margin-bottom:8px"><button onclick="event.stopPropagation();pagarTudoMes(${c.id},'${mesParaFiltro}',${anoParaFiltro})" style="background:#10B98115;border:1.5px solid #10B981;color:#10B981;border-radius:10px;padding:5px 10px;font-size:10px;font-weight:700;cursor:pointer">✅ Pagar tudo ${mesParaFiltro.slice(0,3)}</button></div>`:''}
-      ${todasPagasC&&comprasMes.length>0?`<div style="text-align:center;font-size:11px;color:#10B981;font-weight:700;margin-bottom:6px">🎉 Tudo pago em ${mesParaFiltro}!</div>`:''}
+      ${!todasPagasC&&comprasMes.length>0?`<div style="display:flex;justify-content:flex-end;margin-bottom:8px"><button onclick="event.stopPropagation();pagarTudoMes(${c.id},'${mesParaFiltro}',${anoParaFiltro})" style="background:#10B98115;border:1.5px solid #10B981;color:#10B981;border-radius:10px;padding:5px 10px;font-size:10px;font-weight:700;cursor:pointer">Pagar tudo ✅ ${mesParaFiltro.slice(0,3)}</button></div>`:''}
+      ${todasPagasC&&comprasMes.length>0?`<div style="text-align:center;font-size:11px;color:#10B981;font-weight:700;margin-bottom:6px">Tudo pago em ${mesParaFiltro}!</div>`:''}
       ${c.limite>0?`
       <div style="height:8px;background:#f0f0f0;border-radius:4px"><div style="height:100%;width:${pctUsado}%;background:${corBarra};border-radius:4px;transition:width 0.4s"></div></div>
       <div style="display:flex;justify-content:space-between;margin-top:5px">
@@ -3160,7 +3237,7 @@ function toggleParcelaPaga(compId, numParcela, btnEl, cor){
     btnEl.style.background = pago?'#D1FAE5':`${c2}18`;
     btnEl.style.color = pago?'#10B981':c2;
     btnEl.style.borderColor = pago?'#10B981':`${c2}40`;
-    const _parc=comp.parcelas.find(p=>p.num===numParcela); btnEl.textContent = `${pago?'✅ ':''}${numParcela}/${comp.nParcelas} ${getMesLabel(_parc)}`;
+    const _parc=comp.parcelas.find(p=>p.num===numParcela); btnEl.textContent = `${numParcela}/${comp.nParcelas} ${getMesLabel(_parc)}${pago?' ✅':''}`;
     // Update total badge if exists
     const card = btnEl.closest('.card');
     if(card){
@@ -3258,7 +3335,7 @@ function renderCompras(){
         <div style="display:flex;gap:4px;flex-wrap:wrap;flex:1">
           ${c.parcelas.map(p=>{
             const pago=(c.parcelasPagas||[]).includes(p.num);
-            return `<button onclick="toggleParcelaPaga(${c.id},${p.num},this,'${cardCor}')" style="background:${pago?'#D1FAE5':cardCor+'18'};color:${pago?'#10B981':cardCor};border-radius:6px;padding:3px 8px;font-size:10px;font-weight:700;border:1.5px solid ${pago?'#10B981':cardCor+'40'};cursor:pointer;transition:all 0.2s">${pago?'✅':''} ${p.num}/${c.nParcelas} ${getMesLabel(p)}</button>`;
+            return `<button onclick="toggleParcelaPaga(${c.id},${p.num},this,'${cardCor}')" style="background:${pago?'#D1FAE5':cardCor+'18'};color:${pago?'#10B981':cardCor};border-radius:6px;padding:3px 8px;font-size:10px;font-weight:700;border:1.5px solid ${pago?'#10B981':cardCor+'40'};cursor:pointer;transition:all 0.2s">${p.num}/${c.nParcelas} ${getMesLabel(p)}${pago?' ✅':''}</button>`;
           }).join('')}
         </div>
         <div style="display:flex;gap:5px;margin-left:8px;flex-shrink:0">
@@ -4308,7 +4385,7 @@ function toggleDespesasPainel(){
         return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0 6px 16px;border-bottom:1px solid #f5f5f5;${pago?'opacity:0.55':''}">
           <div style="width:6px;height:6px;border-radius:50%;background:${pago?'#10B981':c.cor};flex-shrink:0"></div>
           <div style="flex:1;font-size:12px;${pago?'text-decoration:line-through;color:#888':''}">${x.desc}</div>
-          <div style="font-size:12px;font-weight:700;color:${pago?'#10B981':c.cor}">${pago?'✅ ':''}${fmtReal(parc?parc.valor:0)}</div>
+          <div style="font-size:12px;font-weight:700;color:${pago?'#10B981':c.cor}">${fmtReal(parc?parc.valor:0)}${pago?' ✅':''}</div>
         </div>`;
       }).join('');
       return {id:c.id, nome:c.nome, cor:c.cor, total, todasPagas, comprasHTML};
@@ -4349,7 +4426,7 @@ function toggleDespesasPainel(){
           <div onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'" style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f5f5f5;cursor:pointer">
             <div style="width:8px;height:8px;border-radius:50%;background:${c.todasPagas?'#10B981':c.cor};flex-shrink:0"></div>
             <div style="flex:1;font-size:13px;font-weight:600;${c.todasPagas?'color:#10B981':''}">${c.nome}</div>
-            <div style="font-size:13px;font-weight:800;color:${c.todasPagas?'#10B981':c.cor}">${c.todasPagas?'✅ ':''}${fmtReal(c.total)}</div>
+            <div style="font-size:13px;font-weight:800;color:${c.todasPagas?'#10B981':c.cor}">${fmtReal(c.total)}${c.todasPagas?' ✅':''}</div>
             <span style="font-size:10px;color:#aaa">▾</span>
           </div>
           <div style="display:none">${c.comprasHTML}</div>
@@ -4361,7 +4438,7 @@ function toggleDespesasPainel(){
             <div style="width:8px;height:8px;border-radius:50%;background:${f.pago?'#10B981':'#DC2626'};flex-shrink:0"></div>
             <div style="flex:1;font-size:13px;font-weight:600;${f.pago?'text-decoration:line-through;color:#888':''}">${f.nome}</div>
             ${f.temporaria?`<div style="font-size:10px;color:#aaa;margin-right:4px">${f.mesesPagos}/${f.duracao}x</div>`:''}
-            <div style="font-size:13px;font-weight:800;color:${f.pago?'#10B981':'#DC2626'}">${f.pago?'✅ ':''}${fmtReal(f.valor)}</div>
+            <div style="font-size:13px;font-weight:800;color:${f.pago?'#10B981':'#DC2626'}">${fmtReal(f.valor)}${f.pago?' ✅':''}</div>
             ${f.temporaria?`<span style="font-size:10px;color:#aaa">▾</span>`:''}
           </div>
           ${f.temporaria?`<div style="display:none">${f.parcelasHTML}</div>`:''}
@@ -4428,7 +4505,12 @@ function renderDFPainel(){
     return a+(pago?0:f.valor);
   },0);
   const gasCompras=getCompras().filter(c=>c.fromGasolina);
-  const totalGasolina=gasCompras.reduce((a,c)=>{ const p=c.parcelas&&c.parcelas.find(x=>x.mes===mesFiltro&&(!x.ano||x.ano===new Date().getFullYear()||x.ano===new Date().getFullYear()+1)); return a+(p?p.valor:0); },0);
+  const totalGasolina=gasCompras.reduce((a,c)=>{
+    const p=c.parcelas&&c.parcelas.find(x=>x.mes===mesFiltro&&(!x.ano||x.ano===new Date().getFullYear()||x.ano===new Date().getFullYear()+1));
+    if(!p) return a;
+    const pago=(c.parcelasPagas||[]).includes(p.num);
+    return a+(pago?0:p.valor);
+  },0);
   const totalGeral=totalCartoes+totalFixas+totalGasolina;
 
   // Renda do mês filtrado
@@ -4456,8 +4538,8 @@ function renderDFPainel(){
       return (comp.parcelasPagas||[]).includes(parc.num);
     });
   });
-  // Gera segmentos do donut por cartão + fixas
-  const R=70, CIRC=2*Math.PI*R, SIZE=180;
+  // Gera segmentos do donut por cartão — coordenadas para 130px donut r=50
+  const R=50, CIRC=2*Math.PI*R, SIZE=130;
   let offset=0;
   const segmentos=[];
 
@@ -4466,7 +4548,7 @@ function renderDFPainel(){
     if(c.gasto<=0) return;
     const pct=totalGeral>0?c.gasto/totalGeral:0;
     const dash=(pct*CIRC).toFixed(2);
-    segmentos.push(`<circle cx="${SIZE/2}" cy="${SIZE/2}" r="${R}" fill="none" stroke="${c.cor}" stroke-width="22"
+    segmentos.push(`<circle cx="${SIZE/2}" cy="${SIZE/2}" r="${R}" fill="none" stroke="${c.cor}" stroke-width="14"
       stroke-dasharray="${dash} ${(CIRC-parseFloat(dash)).toFixed(2)}"
       stroke-dashoffset="${(-offset).toFixed(2)}"/>`);
     offset+=parseFloat(dash);
@@ -4476,7 +4558,7 @@ function renderDFPainel(){
   if(totalGasolina>0){
     const pctG=totalGeral>0?totalGasolina/totalGeral:0;
     const dashG=(pctG*CIRC).toFixed(2);
-    segmentos.push('<circle cx="'+(SIZE/2)+'" cy="'+(SIZE/2)+'" r="'+R+'" fill="none" stroke="#F97316" stroke-width="22" stroke-dasharray="'+dashG+' '+(CIRC-parseFloat(dashG)).toFixed(2)+'" stroke-dashoffset="'+(-offset).toFixed(2)+'"/>');
+    segmentos.push('<circle cx="'+(SIZE/2)+'" cy="'+(SIZE/2)+'" r="'+R+'" fill="none" stroke="#F97316" stroke-width="14" stroke-dasharray="'+dashG+' '+(CIRC-parseFloat(dashG)).toFixed(2)+'" stroke-dashoffset="'+(-offset).toFixed(2)+'"/>');
     offset+=parseFloat(dashG);
   }
 
@@ -4484,7 +4566,7 @@ function renderDFPainel(){
   if(totalFixas>0){
     const pct=totalGeral>0?totalFixas/totalGeral:0;
     const dash=(pct*CIRC).toFixed(2);
-    segmentos.push(`<circle cx="${SIZE/2}" cy="${SIZE/2}" r="${R}" fill="none" stroke="#DC2626" stroke-width="22"
+    segmentos.push(`<circle cx="${SIZE/2}" cy="${SIZE/2}" r="${R}" fill="none" stroke="#DC2626" stroke-width="14"
       stroke-dasharray="${dash} ${(CIRC-parseFloat(dash)).toFixed(2)}"
       stroke-dashoffset="${(-offset).toFixed(2)}"/>`);
   }
@@ -4558,6 +4640,17 @@ function renderDFPainel(){
   },0);
   const totalRealBruto = totalCartoesBruto + totalFixasBruto;
 
+  const totalPagoGeral = gastosPorCartao.reduce((a,c)=>{
+    return a+getCompras().filter(p=>p.cartaoId===c.id).reduce((b,p)=>{
+      const parc=p.parcelas.find(x=>x.mes===mesFiltro&&(!x.ano||x.ano===new Date().getFullYear()||x.ano===new Date().getFullYear()+1));
+      if(!parc) return b;
+      const pg=(p.parcelasPagas||[]).includes(parc.num);
+      return b+(pg?parc.valor:0);
+    },0);
+  },0);
+  const pctPagoGeral = totalGeral>0?Math.round((totalPagoGeral/totalGeral)*100):0;
+  const pctFaltaGeral = 100-pctPagoGeral;
+
   document.getElementById('painel-stats').innerHTML=`
     <!-- CARDS RESUMO RÁPIDO -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
@@ -4611,34 +4704,72 @@ function renderDFPainel(){
           <span style="font-size:13px;font-weight:900;color:#6D28D9" id="ritmo-pordia">-</span>
         </div>
       </div>
-      <div style="display:flex;flex-direction:column;align-items:center;gap:18px">
-        <div style="position:relative;width:${SIZE}px;height:${SIZE}px">
-          <svg width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}" style="transform:rotate(-90deg)">
-            <circle cx="${SIZE/2}" cy="${SIZE/2}" r="${R}" fill="none" stroke="#EDE9FE" stroke-width="22"/>
-            ${totalGeral>0?segmentos.join(''):''}
-          </svg>
-          <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center">
-            <div style="font-size:20px;font-weight:800;color:${todasPagasCartoes?'#10B981':'#DC2626'}">${todasPagasCartoes?'✅ ':''} ${fmtReal(totalGeral)}</div>
-            <div style="font-size:10px;font-weight:600;color:${e.textSub}">${mesFiltro}</div>
-            <div style="font-size:9px;color:#bbb;margin-top:2px">${cartoes.length} cartões</div>
-          </div>
+      <!-- Valor total no topo centralizado -->
+      <div style="text-align:center;margin-bottom:14px">
+        <div style="font-size:10px;color:rgba(255,255,255,0.45);font-weight:600;margin-bottom:2px">DESPESAS · ${mesFiltro.toUpperCase()}</div>
+        <div style="font-size:20px;font-weight:900;color:${todasPagasCartoes?'#10B981':'#fff'}">${fmtReal(totalGeral)}${todasPagasCartoes?' ✅':''}</div>
+      </div>
+
+      <!-- DONUT D6 com info nos lados -->
+      <div style="display:flex;align-items:center;gap:2px;width:100%;overflow:hidden">
+        <!-- Esquerda -->
+        <div style="flex:1;display:flex;flex-direction:column;gap:12px;min-width:0;align-items:flex-end">
+          ${gastosPorCartao.filter((_,i)=>i%2===0).map(c=>{
+            const pct=totalGeral>0?Math.round((c.gasto/totalGeral)*100):0;
+            return `<div style="display:flex;align-items:center;gap:3px;justify-content:flex-end">
+              <div style="text-align:right;min-width:0">
+                <div style="font-size:9px;font-weight:700;color:${c.cor};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.nome} ${pct}%</div>
+                <div style="font-size:10px;font-weight:900;color:${c.cor}99">${fmtReal(c.gasto)}</div>
+              </div>
+              <div style="width:8px;height:1px;border-top:1.5px dashed ${c.cor}60;flex-shrink:0"></div>
+              <div style="width:5px;height:5px;border-radius:50%;background:${c.cor};flex-shrink:0"></div>
+            </div>`;
+          }).join('')}
         </div>
 
-        <!-- LEGENDA -->
-        <div style="display:flex;flex-direction:column;gap:8px;width:100%">
-          ${legendaCartoes}
-          ${totalFixas>0?`
-          <div style="background:#F5F0FF;border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:8px">
-            <div style="width:10px;height:10px;border-radius:50%;background:#DC2626;flex-shrink:0"></div>
-            <div style="flex:1;font-size:11px;font-weight:600;color:#1A0A2E">📋 Fixas</div>
-            <div style="font-size:10px;font-weight:700;color:#aaa;margin-right:4px">${pctFixas}%</div>
-            <div style="font-weight:800;color:#DC2626;font-size:13px">${fmtReal(totalFixas)}</div>
-          </div>`:''}
-          ${totalGasolina>0?`<div style="background:#FFF7ED;border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:8px"><div style="width:10px;height:10px;border-radius:50%;background:#F97316;flex-shrink:0"></div><div style="flex:1;font-size:11px;font-weight:600;color:#1A0A2E">⛽️ Gasolina</div><div style="font-weight:800;color:#F97316;font-size:13px">${fmtReal(totalGasolina)}</div></div>`:''}
-          ${cartoes.length===0&&totalGasolina===0?`<div style="text-align:center;opacity:0.45;font-size:13px;padding:12px">Adicione cartões para ver o gráfico</div>`:''}
+        <!-- Donut 130px + 🧿 centro -->
+        <div style="position:relative;width:130px;height:130px;flex-shrink:0">
+          <svg width="130" height="130" viewBox="0 0 130 130" style="transform:rotate(-90deg)">
+            <circle cx="65" cy="65" r="50" fill="none" stroke="#2A2A3E" stroke-width="14"/>
+            ${totalGeral>0?segmentos.join(''):''}
+            <circle cx="65" cy="65" r="30" fill="none" stroke="#111" stroke-width="12"/>
+            ${totalGeral>0?`<circle cx="65" cy="65" r="30" fill="none" stroke="#10B981" stroke-width="12" stroke-dasharray="${((pctPagoGeral/100)*2*Math.PI*30).toFixed(2)} ${(2*Math.PI*30).toFixed(2)}"/>
+            <circle cx="65" cy="65" r="30" fill="none" stroke="#EF4444" stroke-width="12" stroke-dasharray="${((pctFaltaGeral/100)*2*Math.PI*30).toFixed(2)} ${(2*Math.PI*30).toFixed(2)}" stroke-dashoffset="-${((pctPagoGeral/100)*2*Math.PI*30).toFixed(2)}"/>`:''}
+          </svg>
+          <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:36px;line-height:1">🧿</div>
+        </div>
+
+        <!-- Direita -->
+        <div style="flex:1;display:flex;flex-direction:column;gap:12px;min-width:0">
+          ${gastosPorCartao.filter((_,i)=>i%2===1).map(c=>{
+            const pct=totalGeral>0?Math.round((c.gasto/totalGeral)*100):0;
+            return `<div style="display:flex;align-items:center;gap:3px">
+              <div style="width:5px;height:5px;border-radius:50%;background:${c.cor};flex-shrink:0"></div>
+              <div style="width:8px;height:1px;border-top:1.5px dashed ${c.cor}60;flex-shrink:0"></div>
+              <div style="min-width:0">
+                <div style="font-size:9px;font-weight:700;color:${c.cor};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.nome} ${pct}%</div>
+                <div style="font-size:10px;font-weight:900;color:${c.cor}99">${fmtReal(c.gasto)}</div>
+              </div>
+            </div>`;
+          }).join('')}
+          <!-- pago/falta -->
+          <div style="display:flex;align-items:center;gap:3px">
+            <div style="width:5px;height:5px;border-radius:50%;background:#10B981;flex-shrink:0"></div>
+            <div style="width:8px;height:1px;border-top:1.5px dashed #10B98160;flex-shrink:0"></div>
+            <span style="font-size:10px;font-weight:900;color:#10B981">${pctPagoGeral}%</span>
+            <div style="width:5px;height:5px;border-radius:50%;background:#EF4444;flex-shrink:0;margin-left:4px"></div>
+            <div style="width:8px;height:1px;border-top:1.5px dashed #EF444460;flex-shrink:0"></div>
+            <span style="font-size:10px;font-weight:900;color:#EF4444">${pctFaltaGeral}%</span>
+          </div>
         </div>
       </div>
-    </div>
+
+      ${totalFixas>0||totalGasolina>0?`
+      <div style="display:flex;gap:8px;margin-top:12px">
+        ${totalFixas>0?`<div style="flex:1;background:#F5F0FF;border-radius:10px;padding:8px 10px;display:flex;align-items:center;gap:6px"><div style="width:8px;height:8px;border-radius:50%;background:#DC2626;flex-shrink:0"></div><div style="font-size:11px;font-weight:600;flex:1">📋 Fixas</div><div style="font-weight:800;color:#DC2626;font-size:12px">${fmtReal(totalFixas)}</div></div>`:''}
+        ${totalGasolina>0?`<div style="flex:1;background:#FFF7ED;border-radius:10px;padding:8px 10px;display:flex;align-items:center;gap:6px"><div style="width:8px;height:8px;border-radius:50%;background:#F97316;flex-shrink:0"></div><div style="font-size:11px;font-weight:600;flex:1">⛽️ Gasolina</div><div style="font-weight:800;color:#F97316;font-size:12px">${fmtReal(totalGasolina)}</div></div>`:''}
+      </div>`:''}
+      ${cartoes.length===0&&totalGasolina===0?`<div style="text-align:center;opacity:0.45;font-size:13px;padding:12px">Adicione cartões para ver o gráfico</div>`:''}    </div>
 
     <!-- CARD RENDA vs DESPESAS -->
     <div class="card" style="padding:18px;margin-bottom:12px">
@@ -5063,12 +5194,16 @@ function salvarGasolina(){
   // Adiciona ao painel como gasto (sem cartão)
   const compras=getCompras();
   const dataObj=new Date(reg.data+'T12:00:00');
+  const pagGas = gasPagAtual||'';
+  const isPagoVista = !cartaoId && ['Dinheiro','PIX','Caixa','À vista'].includes(pagGas);
   compras.push({
     id:reg.id,
     desc:(reg.tipo||'Gasolina')+' ⛽️'+(reg.litros?' · '+reg.litros.toFixed(2)+'L':''),
     valor:reg.valor, nParcelas:1, cartaoId:reg.cartaoId,
+    pagamento:pagGas,
     dataCompra:reg.data,
     fromGasolina:true,
+    parcelasPagas: isPagoVista ? [1] : [],
     parcelas:[{mes:MESES[dataObj.getMonth()],ano:dataObj.getFullYear(),valor:reg.valor,num:1}],
   });
   salvarCompras(compras);
