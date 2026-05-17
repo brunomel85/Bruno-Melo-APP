@@ -1689,8 +1689,8 @@ function renderPainel(){
         <div style="flex:1"><div class="item-local">${fmtReal(d.valor)}</div><div class="item-meta">${fmtData(d.data)}</div></div>
         <div class="badge" style="color:#10B981;background:#ECFDF5">R$</div>
       </div>`)].join('') || '<div style="padding:20px;text-align:center;opacity:0.45;font-size:13px">Nenhum dado ainda.</div>';
-    document.getElementById('link-todos').style.color=e.accent;
-  document.getElementById('link-todos').onclick=function(){ navTo(empresaAtual===0?'df-compras':'registros'); };
+    const _lt=document.getElementById('link-todos'); if(_lt) _lt.style.color=e.accent;
+  const _lt2=document.getElementById('link-todos'); if(_lt2) _lt2.onclick=function(){ navTo(empresaAtual===0?'df-compras':'registros'); };
     return;
   }
 
@@ -1807,7 +1807,7 @@ function renderPainel(){
         </div>
       </div>`;
     }).join('');
-  document.getElementById('link-todos').style.color=e.accent;
+  const _lt=document.getElementById('link-todos'); if(_lt) _lt.style.color=e.accent;
 }
 
 // =====================
@@ -2184,6 +2184,7 @@ function irParaDemanda(id){
 }
 function toggleConfig(){
   const modal = document.getElementById('config-modal');
+  if(!modal) return;
   const visible = modal.style.display !== 'none';
   modal.style.display = visible ? 'none' : 'flex';
 }
@@ -2872,7 +2873,7 @@ function excluirCartao(id){
 let cartaoAberto=null;
 let cartaoMesFiltro={};
 function toggleCartao(id){ cartaoAberto=cartaoAberto===id?null:id; renderCartoes(); }
-function setCartaoMes(id,mes,e){ if(e)e.stopPropagation(); cartaoMesFiltro[id]=mes; renderCartoes(); }
+function setCartaoMes(id,mes,e,ano){ if(e)e.stopPropagation(); cartaoMesFiltro[id]=mes; cartaoMesFiltro[id+'_ano']=ano||new Date().getFullYear(); renderCartoes(); }
 
 function renderCartoes(){
   const cartoes=getCartoes().sort((a,b)=>(parseInt(a.venc)||31)-(parseInt(b.venc)||31));
@@ -2889,8 +2890,8 @@ function renderCartoes(){
   }
   document.getElementById('lista-df-cartoes').innerHTML=cartoes.map(c=>{
     // Gasto do mês excluindo parcelas já pagas
-    const gastoMes=compras.filter(p=>p.cartaoId===c.id&&p.parcelas.some(x=>x.mes===mesAtual&&(!x.ano||x.ano===new Date().getFullYear()))).reduce((a,p)=>{
-      const parc=p.parcelas.find(x=>x.mes===mesAtual&&(!x.ano||x.ano===new Date().getFullYear()));
+    const gastoMes=compras.filter(p=>p.cartaoId===c.id&&p.parcelas.some(x=>x.mes===mesAtual&&(!x.ano||x.ano===new Date().getFullYear()||x.ano===new Date().getFullYear()+1))).reduce((a,p)=>{
+      const parc=p.parcelas.find(x=>x.mes===mesAtual&&(!x.ano||x.ano===new Date().getFullYear()||x.ano===new Date().getFullYear()+1));
       if(!parc) return a;
       const pago=(p.parcelasPagas||[]).includes(parc.num);
       return a+(pago?0:parc.valor);
@@ -2908,7 +2909,11 @@ function renderCartoes(){
     // Atrasado - meses anteriores não pagos
     const idxMesAtualC=MESES.indexOf(mesAtual);
     const totalAtrasadoC=compras.filter(p=>p.cartaoId===c.id).reduce((a,p)=>{
-      return a+p.parcelas.filter(parc=>MESES.indexOf(parc.mes)<idxMesAtualC).reduce((b,parc)=>{
+      return a+p.parcelas.filter(parc=>{
+        const anoParc=parc.ano||new Date().getFullYear();
+        const anoAtualC=new Date().getFullYear();
+        return anoParc<anoAtualC||(anoParc===anoAtualC&&MESES.indexOf(parc.mes)<idxMesAtualC);
+      }).reduce((b,parc)=>{
         const pg=(p.parcelasPagas||[]).includes(parc.num);
         return b+(pg?0:parc.valor);
       },0);
@@ -2918,23 +2923,23 @@ function renderCartoes(){
     // Mês filtrado para este cartão
     const mesFiltroCartao = cartaoMesFiltro[c.id] || mesAtual;
     // Todos os meses com compras deste cartão em ordem cronológica
-    const todasParcelas = compras.filter(p=>p.cartaoId===c.id).flatMap(p=>p.parcelas.map(x=>({mes:x.mes,ano:x.ano||new Date().getFullYear()})));
+    const todasParcelas = compras.filter(p=>p.cartaoId===c.id).flatMap(p=>p.parcelas.map(x=>({mes:x.mes,ano:x.ano||new Date().getFullYear(),mesLabel:x.mesLabel||(x.ano&&x.ano!==new Date().getFullYear()?`${x.mes.slice(0,3)}/${String(x.ano).slice(2)}`:x.mes)})));
     const mesesUnicos = [...new Map(todasParcelas.map(p=>[p.ano+'-'+MESES.indexOf(p.mes).toString().padStart(2,'0'), p])).values()]
-      .sort((a,b)=> a.ano!==b.ano ? a.ano-b.ano : MESES.indexOf(a.mes)-MESES.indexOf(b.mes))
-      .map(p=>p.mes);
-    const mesesComCompras = [...new Set(mesesUnicos)];
-    const comprasMes=compras.filter(p=>p.cartaoId===c.id&&p.parcelas.some(x=>x.mes===mesFiltroCartao&&(!x.ano||x.ano===new Date().getFullYear())));
+      .sort((a,b)=> a.ano!==b.ano ? a.ano-b.ano : MESES.indexOf(a.mes)-MESES.indexOf(b.mes));
+    const mesesComCompras = mesesUnicos;
+    const mesFiltroAno = cartaoMesFiltro[c.id+'_ano'] || new Date().getFullYear();
+    const comprasMes=compras.filter(p=>p.cartaoId===c.id&&p.parcelas.some(x=>x.mes===mesFiltroCartao&&(x.ano||new Date().getFullYear())===mesFiltroAno));
     const listaCompras=openCard?`
       <div style="border-top:1px solid #f0f0f0;margin-top:12px;padding-top:12px" onclick="event.stopPropagation()">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
           <div style="font-size:11px;font-weight:700;opacity:0.5">MÊS:</div>
           ${mesesComCompras.map(m=>`
-            <button onclick="setCartaoMes(${c.id},'${m}',event)" style="padding:3px 10px;border-radius:20px;border:1.5px solid ${m===mesFiltroCartao?c.cor:'#E5E7EB'};background:${m===mesFiltroCartao?c.cor:'transparent'};color:${m===mesFiltroCartao?'#fff':'#888'};font-size:10px;font-weight:700;cursor:pointer">${m}</button>
+            <button onclick="setCartaoMes(${c.id},'${m.mes}',event,${m.ano})" style="padding:3px 10px;border-radius:20px;border:1.5px solid ${m.mes===mesFiltroCartao&&m.ano===mesFiltroAno?c.cor:'#E5E7EB'};background:${m.mes===mesFiltroCartao&&m.ano===mesFiltroAno?c.cor:'transparent'};color:${m.mes===mesFiltroCartao&&m.ano===mesFiltroAno?'#fff':'#888'};font-size:10px;font-weight:700;cursor:pointer">${m.mesLabel}</button>
           `).join('')}
         </div>
         ${comprasMes.length===0?`<div style="text-align:center;opacity:0.4;font-size:13px;padding:10px 0">Nenhuma compra em ${mesFiltroCartao}</div>`:''}
         ${comprasMes.map(p=>{
-          const parc=p.parcelas.find(x=>x.mes===mesFiltroCartao&&(!x.ano||x.ano===new Date().getFullYear()));
+          const parc=p.parcelas.find(x=>x.mes===mesFiltroCartao&&(!x.ano||x.ano===new Date().getFullYear()||x.ano===new Date().getFullYear()+1));
           const pago=parc&&(p.parcelasPagas||[]).includes(parc.num);
           return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f9f9f9">
             <div style="flex:1">
@@ -2950,7 +2955,7 @@ function renderCartoes(){
 
     // Check if all parcelas of mesAtual are paid
     const todasPagasC = comprasMes.length>0 && comprasMes.every(comp=>{
-      const parc=comp.parcelas.find(p=>p.mes===mesAtual&&(!p.ano||p.ano===new Date().getFullYear()));
+      const parc=comp.parcelas.find(p=>p.mes===mesAtual&&(!p.ano||p.ano===new Date().getFullYear()||p.ano===new Date().getFullYear()+1));
       if(!parc) return true;
       return (comp.parcelasPagas||[]).includes(parc.num);
     });
@@ -3000,7 +3005,7 @@ function renderCartoes(){
           <button onclick="editarCartao(${c.id})" style="background:${c.cor}18;border:1px solid ${c.cor};color:${c.cor};padding:6px 12px;border-radius:8px;cursor:pointer;font-weight:600;font-size:12px">✏️ Editar</button>
           <button onclick="excluirCartao(${c.id})" style="background:rgba(239,68,68,0.08);border:1px solid #EF4444;color:#EF4444;padding:6px 12px;border-radius:8px;cursor:pointer;font-weight:600;font-size:12px">🗑️ Excluir</button>
         </div>
-        ${openCard&&comprasMes.length>0?`<div style="display:inline-flex;align-items:center;gap:6px;background:${c.cor}15;border-radius:8px;padding:5px 10px"><span style="font-size:11px;color:${c.cor};font-weight:600">Total ${mesFiltroCartao}</span><span style="font-size:15px;font-weight:800;color:${c.cor}">${fmtReal(comprasMes.reduce((a,p)=>{const parc=p.parcelas.find(x=>x.mes===mesFiltroCartao&&(!x.ano||x.ano===new Date().getFullYear()));const pago=parc&&(p.parcelasPagas||[]).includes(parc.num);return a+(pago?0:(parc?parc.valor:0));},0))}</span></div>`:''}
+        ${openCard&&comprasMes.length>0?`<div style="display:inline-flex;align-items:center;gap:6px;background:${c.cor}15;border-radius:8px;padding:5px 10px"><span style="font-size:11px;color:${c.cor};font-weight:600">Total ${mesFiltroCartao}</span><span style="font-size:15px;font-weight:800;color:${c.cor}">${fmtReal(comprasMes.reduce((a,p)=>{const parc=p.parcelas.find(x=>x.mes===mesFiltroCartao&&(!x.ano||x.ano===new Date().getFullYear()||x.ano===new Date().getFullYear()+1));const pago=parc&&(p.parcelasPagas||[]).includes(parc.num);return a+(pago?0:(parc?parc.valor:0));},0))}</span></div>`:''}
       </div>
     </div>`;
   }).join('');
@@ -3032,6 +3037,17 @@ function selecionarCatCompra(cat){
   });
 }
 
+function getMesLabel(parc){
+  if(!parc) return '';
+  if(parc.mesLabel) return parc.mesLabel;
+  // For old parcelas without mesLabel
+  const anoAtual = new Date().getFullYear();
+  if(parc.ano && parc.ano !== anoAtual){
+    return `${(parc.mes||'').slice(0,3)}/${String(parc.ano).slice(2)}`;
+  }
+  return (parc.mes||'').slice(0,3);
+}
+
 function salvarCompra(){
   const desc=document.getElementById('df-comp-desc').value.trim();
   const valor=parseCurrency('df-comp-valor');
@@ -3054,10 +3070,14 @@ function salvarCompra(){
     mesInicio+=1;
     if(mesInicio>11){ mesInicio=0; anoInicio++; }
   }
+  const anoAtualBase = new Date().getFullYear();
   const parcelas=[];
   for(let i=0;i<nParcelas;i++){
     const d=new Date(anoInicio,mesInicio+i,1);
-    parcelas.push({mes:MESES[d.getMonth()],ano:d.getFullYear(),valor:valorParc,num:i+1});
+    const mesNome = MESES[d.getMonth()];
+    const anoParc = d.getFullYear();
+    const mesLabel = anoParc !== anoAtualBase ? `${mesNome.slice(0,3)}/${String(anoParc).slice(2)}` : mesNome;
+    parcelas.push({mes:mesNome, ano:anoParc, mesLabel, valor:valorParc, num:i+1});
   }
   const compra={id:editandoCompraId||Date.now(),desc,valor,nParcelas,cartaoId,pagamento:compPagAtual,dataCompra,parcelas,categoria:catCompraAtual};
   let compras=getCompras();
@@ -3137,7 +3157,7 @@ function toggleParcelaPaga(compId, numParcela, btnEl, cor){
     btnEl.style.background = pago?'#D1FAE5':`${c2}18`;
     btnEl.style.color = pago?'#10B981':c2;
     btnEl.style.borderColor = pago?'#10B981':`${c2}40`;
-    btnEl.textContent = `${pago?'✅ ':''}${numParcela}/${comp.nParcelas} ${(comp.parcelas.find(p=>p.num===numParcela)?.mes||'').slice(0,3)}`;
+    const _parc=comp.parcelas.find(p=>p.num===numParcela); btnEl.textContent = `${pago?'✅ ':''}${numParcela}/${comp.nParcelas} ${getMesLabel(_parc)}`;
     // Update total badge if exists
     const card = btnEl.closest('.card');
     if(card){
@@ -3145,7 +3165,7 @@ function toggleParcelaPaga(compId, numParcela, btnEl, cor){
       if(totalBadge){
         const mesFiltro = totalBadge.getAttribute('data-mes');
         const total = compras.filter(c=>c.cartaoId===comp.cartaoId).reduce((a,c)=>{
-          const parc=c.parcelas.find(p=>p.mes===mesFiltro&&(!p.ano||p.ano===new Date().getFullYear()));
+          const parc=c.parcelas.find(p=>p.mes===mesFiltro&&(!p.ano||p.ano===new Date().getFullYear()||p.ano===new Date().getFullYear()+1));
           const pg=(c.parcelasPagas||[]).includes(parc?.num);
           return a+(pg?0:(parc?.valor||0));
         },0);
@@ -3235,7 +3255,7 @@ function renderCompras(){
         <div style="display:flex;gap:4px;flex-wrap:wrap;flex:1">
           ${c.parcelas.map(p=>{
             const pago=(c.parcelasPagas||[]).includes(p.num);
-            return `<button onclick="toggleParcelaPaga(${c.id},${p.num},this,'${cardCor}')" style="background:${pago?'#D1FAE5':cardCor+'18'};color:${pago?'#10B981':cardCor};border-radius:6px;padding:3px 8px;font-size:10px;font-weight:700;border:1.5px solid ${pago?'#10B981':cardCor+'40'};cursor:pointer;transition:all 0.2s">${pago?'✅':''} ${p.num}/${c.nParcelas} ${p.mes.slice(0,3)}</button>`;
+            return `<button onclick="toggleParcelaPaga(${c.id},${p.num},this,'${cardCor}')" style="background:${pago?'#D1FAE5':cardCor+'18'};color:${pago?'#10B981':cardCor};border-radius:6px;padding:3px 8px;font-size:10px;font-weight:700;border:1.5px solid ${pago?'#10B981':cardCor+'40'};cursor:pointer;transition:all 0.2s">${pago?'✅':''} ${p.num}/${c.nParcelas} ${getMesLabel(p)}</button>`;
           }).join('')}
         </div>
         <div style="display:flex;gap:5px;margin-left:8px;flex-shrink:0">
@@ -3387,7 +3407,8 @@ function renderRolagem(){
   compras.forEach(c=>{
     const cartao = cartoes.find(x=>x.id===c.cartaoId);
     c.parcelas.forEach(p=>{
-      if(MESES.indexOf(p.mes)<idxMesAtual){
+      const anoP=p.mes?( () => { const anoP2=p.ano||new Date().getFullYear(); const anoAt2=new Date().getFullYear(); return anoP2<anoAt2||(anoP2===anoAt2&&MESES.indexOf(p.mes)<idxMesAtual); })():false;
+        if(anoP){
         const pago = (c.parcelasPagas||[]).includes(p.num);
         const rolado = rolagemRolados[c.id+'-'+p.num];
         if(!pago && !rolado){
@@ -3415,7 +3436,11 @@ function renderRolagem(){
 
   // Calcular total atrasado geral
   const totalAtrasadoCartoes = compras.filter(c=>c.cartaoId).reduce((a,c)=>{
-    return a + c.parcelas.filter(p=>MESES.indexOf(p.mes)<idxMesAtual).reduce((b,p)=>{
+    return a + c.parcelas.filter(p=>{
+      const anoP=p.ano||new Date().getFullYear();
+      const anoAt=new Date().getFullYear();
+      return anoP<anoAt||(anoP===anoAt&&MESES.indexOf(p.mes)<idxMesAtual);
+    }).reduce((b,p)=>{
       const pg=(c.parcelasPagas||[]).includes(p.num); return b+(pg?0:p.valor);
     },0);
   },0);
@@ -3452,7 +3477,7 @@ function renderRolagem(){
 
     // Total do cartão (parcelas não pagas mês atual)
     const totalCartao = cartao ? compras.filter(p=>p.cartaoId===cartao.id).reduce((a,c)=>{
-      const parc = c.parcelas.find(p=>p.mes===mesAtual&&(!p.ano||p.ano===new Date().getFullYear()));
+      const parc = c.parcelas.find(p=>p.mes===mesAtual&&(!p.ano||p.ano===new Date().getFullYear()||p.ano===new Date().getFullYear()+1));
       if(!parc) return a;
       const pago = (c.parcelasPagas||[]).includes(parc.num);
       return a + (pago?0:parc.valor);
@@ -3464,7 +3489,7 @@ function renderRolagem(){
     const pctRol = 100 - pctPago;
 
     // Compras do cartão no mês atual não pagas
-    const comprasMes = cartao ? compras.filter(p=>p.cartaoId===cartao.id&&p.parcelas.some(x=>x.mes===mesAtual&&(!x.ano||x.ano===new Date().getFullYear()))) : [];
+    const comprasMes = cartao ? compras.filter(p=>p.cartaoId===cartao.id&&p.parcelas.some(x=>x.mes===mesAtual&&(!x.ano||x.ano===new Date().getFullYear()||x.ano===new Date().getFullYear()+1))) : [];
 
     document.getElementById('rolagem-content').innerHTML = totalAtrasadoHTML + avisoHTML + `
       <div class="card">
@@ -3521,7 +3546,7 @@ function renderRolagem(){
           <button onclick="rolarTudoCartao()" style="background:#8B5CF6;color:#fff;border:none;border-radius:10px;padding:7px 12px;font-size:11px;font-weight:700;cursor:pointer">🔂 Rolar tudo</button>
         </div>
         ${comprasMes.map(c=>{
-          const parc = c.parcelas.find(p=>p.mes===mesAtual&&(!p.ano||p.ano===new Date().getFullYear()));
+          const parc = c.parcelas.find(p=>p.mes===mesAtual&&(!p.ano||p.ano===new Date().getFullYear()||p.ano===new Date().getFullYear()+1));
           const rolado = rolagemRolados[c.id];
           return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f5f5f5;${rolado?'opacity:0.65':''}">
             <div style="width:20px;height:20px;border-radius:6px;border:2px solid ${rolado?'#10B981':'#8B5CF6'};background:${rolado?'#10B981':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;color:${rolado?'#fff':'#8B5CF6'}">${rolado?'🔂':''}</div>
@@ -3604,9 +3629,9 @@ function renderRolagem(){
 
   } else {
     // Compras com cartão
-    const comprasMesCartao = compras.filter(c=>c.cartaoId&&c.parcelas.some(p=>p.mes===mesAtual&&(!p.ano||p.ano===new Date().getFullYear())));
+    const comprasMesCartao = compras.filter(c=>c.cartaoId&&c.parcelas.some(p=>p.mes===mesAtual&&(!p.ano||p.ano===new Date().getFullYear()||p.ano===new Date().getFullYear()+1)));
     const totalCompras = comprasMesCartao.reduce((a,c)=>{
-      const parc=c.parcelas.find(p=>p.mes===mesAtual&&(!p.ano||p.ano===new Date().getFullYear()));
+      const parc=c.parcelas.find(p=>p.mes===mesAtual&&(!p.ano||p.ano===new Date().getFullYear()||p.ano===new Date().getFullYear()+1));
       const pago=parc&&(c.parcelasPagas||[]).includes(parc.num);
       const rolado=rolagemRolados[c.id];
       return a+(!pago&&!rolado?(parc?parc.valor:0):0);
@@ -3655,7 +3680,7 @@ function renderRolagem(){
           <button onclick="rolarTudoCartao()" style="background:#8B5CF6;color:#fff;border:none;border-radius:10px;padding:7px 12px;font-size:11px;font-weight:700;cursor:pointer">🔂 Rolar tudo</button>
         </div>
         ${comprasMesCartao.filter(c=>!rolagemCartaoId||c.cartaoId==rolagemCartaoId).map(c=>{
-          const parc=c.parcelas.find(p=>p.mes===mesAtual&&(!p.ano||p.ano===new Date().getFullYear()));
+          const parc=c.parcelas.find(p=>p.mes===mesAtual&&(!p.ano||p.ano===new Date().getFullYear()||p.ano===new Date().getFullYear()+1));
           const pago=parc&&(c.parcelasPagas||[]).includes(parc.num);
           const rolado=rolagemRolados[c.id];
           const cartao=cartoes.find(x=>x.id===c.cartaoId);
@@ -3726,7 +3751,8 @@ function rolarTodosAtrasados(){
   const compras = getCompras();
   compras.forEach(c=>{
     c.parcelas.forEach(p=>{
-      if(MESES.indexOf(p.mes)<idxMesAtual){
+      const anoP=p.mes?( () => { const anoP2=p.ano||new Date().getFullYear(); const anoAt2=new Date().getFullYear(); return anoP2<anoAt2||(anoP2===anoAt2&&MESES.indexOf(p.mes)<idxMesAtual); })():false;
+        if(anoP){
         const pago = (c.parcelasPagas||[]).includes(p.num);
         const rolado = rolagemRolados[c.id+'-'+p.num];
         if(!pago && !rolado) rolarParcelaAtrasada(c.id, p.num);
@@ -3742,7 +3768,7 @@ function rolarCompra(compId){
   const comp = compras.find(c=>c.id===compId);
   if(!comp) return;
   // Encontra parcela do mês atual
-  const parc = comp.parcelas.find(p=>p.mes===mesAtual&&(!p.ano||p.ano===new Date().getFullYear()));
+  const parc = comp.parcelas.find(p=>p.mes===mesAtual&&(!p.ano||p.ano===new Date().getFullYear()||p.ano===new Date().getFullYear()+1));
   if(!parc) return;
   // Adiciona parcela extra no próximo mês
   const novaParc = {...parc, mes:proxMes, num:parc.num, rolado:true};
@@ -3760,7 +3786,7 @@ function rolarTudoCartao(){
   const cartao = cartoes.find(c=>c.id==rolagemCartaoId);
   if(!cartao) return;
   const compras = getCompras();
-  compras.filter(p=>p.cartaoId===cartao.id&&p.parcelas.some(x=>x.mes===mesAtual&&(!x.ano||x.ano===new Date().getFullYear()))).forEach(c=>{
+  compras.filter(p=>p.cartaoId===cartao.id&&p.parcelas.some(x=>x.mes===mesAtual&&(!x.ano||x.ano===new Date().getFullYear()||x.ano===new Date().getFullYear()+1))).forEach(c=>{
     rolarCompra(c.id);
   });
 }
@@ -4215,7 +4241,7 @@ function toggleRitmo(){
     // Cartões não pagos
     const totalCartoes = getCompras().reduce((a,c)=>{
       if(!c.cartaoId) return a;
-      const parcs = c.parcelas.filter(p=>p.mes===mesFiltro&&(!p.ano||p.ano===new Date().getFullYear()));
+      const parcs = c.parcelas.filter(p=>p.mes===mesFiltro&&(!p.ano||p.ano===new Date().getFullYear()||p.ano===new Date().getFullYear()+1));
       return a+parcs.reduce((b,parc)=>{
         const pago=(c.parcelasPagas||[]).includes(parc.num);
         return b+(pago?0:parc.valor);
@@ -4263,18 +4289,18 @@ function toggleDespesasPainel(){
 
     // Cartões — agrupar por cartão
     const cartaoItems = cartoes.map(c=>{
-      const comprasDoCartao = compras.filter(x=>x.cartaoId===c.id&&x.parcelas.some(p=>p.mes===mesFiltro&&(!p.ano||p.ano===new Date().getFullYear())));
+      const comprasDoCartao = compras.filter(x=>x.cartaoId===c.id&&x.parcelas.some(p=>p.mes===mesFiltro&&(!p.ano||p.ano===new Date().getFullYear()||p.ano===new Date().getFullYear()+1)));
       if(comprasDoCartao.length===0) return null;
       const total = comprasDoCartao.reduce((a,x)=>{
-        const parc=x.parcelas.find(p=>p.mes===mesFiltro&&(!p.ano||p.ano===new Date().getFullYear()));
+        const parc=x.parcelas.find(p=>p.mes===mesFiltro&&(!p.ano||p.ano===new Date().getFullYear()||p.ano===new Date().getFullYear()+1));
         return a+(parc?parc.valor:0);
       },0);
       const todasPagas = comprasDoCartao.every(x=>{
-        const parc=x.parcelas.find(p=>p.mes===mesFiltro&&(!p.ano||p.ano===new Date().getFullYear()));
+        const parc=x.parcelas.find(p=>p.mes===mesFiltro&&(!p.ano||p.ano===new Date().getFullYear()||p.ano===new Date().getFullYear()+1));
         return parc&&(x.parcelasPagas||[]).includes(parc.num);
       });
       const comprasHTML = comprasDoCartao.map(x=>{
-        const parc=x.parcelas.find(p=>p.mes===mesFiltro&&(!p.ano||p.ano===new Date().getFullYear()));
+        const parc=x.parcelas.find(p=>p.mes===mesFiltro&&(!p.ano||p.ano===new Date().getFullYear()||p.ano===new Date().getFullYear()+1));
         const pago=parc&&(x.parcelasPagas||[]).includes(parc.num);
         return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0 6px 16px;border-bottom:1px solid #f5f5f5;${pago?'opacity:0.55':''}">
           <div style="width:6px;height:6px;border-radius:50%;background:${pago?'#10B981':c.cor};flex-shrink:0"></div>
@@ -4372,7 +4398,7 @@ function renderDFPainel(){
     const gasto=compras.reduce((a,comp)=>{
       if(comp.cartaoId!==c.id) return a;
       // Busca todas as parcelas desse mês (qualquer ano)
-      const parcs=comp.parcelas.filter(x=>x.mes===mesFiltro&&(!x.ano||x.ano===new Date().getFullYear()));
+      const parcs=comp.parcelas.filter(x=>x.mes===mesFiltro&&(!x.ano||x.ano===new Date().getFullYear()||x.ano===new Date().getFullYear()+1));
       return a+parcs.reduce((b,parc)=>{
         const pago=(comp.parcelasPagas||[]).includes(parc.num);
         return b+(pago?0:parc.valor);
@@ -4399,7 +4425,7 @@ function renderDFPainel(){
     return a+(pago?0:f.valor);
   },0);
   const gasCompras=getCompras().filter(c=>c.fromGasolina);
-  const totalGasolina=gasCompras.reduce((a,c)=>{ const p=c.parcelas&&c.parcelas.find(x=>x.mes===mesFiltro&&(!x.ano||x.ano===new Date().getFullYear())); return a+(p?p.valor:0); },0);
+  const totalGasolina=gasCompras.reduce((a,c)=>{ const p=c.parcelas&&c.parcelas.find(x=>x.mes===mesFiltro&&(!x.ano||x.ano===new Date().getFullYear()||x.ano===new Date().getFullYear()+1)); return a+(p?p.valor:0); },0);
   const totalGeral=totalCartoes+totalFixas+totalGasolina;
 
   // Renda do mês filtrado
@@ -4419,10 +4445,10 @@ function renderDFPainel(){
 
   // Check if all paid this month
   const todasPagasCartoes = cartoes.length>0 && cartoes.every(c=>{
-    const comprasC=getCompras().filter(p=>p.cartaoId===c.id&&p.parcelas.some(x=>x.mes===mesFiltro&&(!x.ano||x.ano===new Date().getFullYear())));
+    const comprasC=getCompras().filter(p=>p.cartaoId===c.id&&p.parcelas.some(x=>x.mes===mesFiltro&&(!x.ano||x.ano===new Date().getFullYear()||x.ano===new Date().getFullYear()+1)));
     if(comprasC.length===0) return true;
     return comprasC.every(comp=>{
-      const parc=comp.parcelas.find(p=>p.mes===mesFiltro&&(!p.ano||p.ano===new Date().getFullYear()));
+      const parc=comp.parcelas.find(p=>p.mes===mesFiltro&&(!p.ano||p.ano===new Date().getFullYear()||p.ano===new Date().getFullYear()+1));
       if(!parc) return true;
       return (comp.parcelasPagas||[]).includes(parc.num);
     });
@@ -4520,7 +4546,7 @@ function renderDFPainel(){
   // Calc total real bruto (tudo do mês)
   const totalFixasBruto = fixasAtivas.reduce((a,f)=>a+f.valor,0);
   const totalCartoesBruto = getCompras().filter(c=>c.cartaoId).reduce((a,c)=>{
-    const parc=c.parcelas.find(p=>p.mes===mesFiltro&&(!p.ano||p.ano===new Date().getFullYear()));
+    const parc=c.parcelas.find(p=>p.mes===mesFiltro&&(!p.ano||p.ano===new Date().getFullYear()||p.ano===new Date().getFullYear()+1));
     return a+(parc?parc.valor:0);
   },0);
   const totalRealBruto = totalCartoesBruto + totalFixasBruto;
@@ -4647,7 +4673,7 @@ function renderDFPainel(){
         <div style="flex:1"><div class="item-local">${c.desc}</div><div class="item-meta">${cartao?cartao.nome:'—'} · ${c.nParcelas}x · ${fmtData(c.dataCompra)}</div></div>
         <div class="badge" style="color:${cor};background:${cor}18">${fmtReal(c.valor)}</div>
       </div>`;}).join('');
-  document.getElementById('link-todos').style.color=e.accent;
+  const _lt=document.getElementById('link-todos'); if(_lt) _lt.style.color=e.accent;
 }
 
 
