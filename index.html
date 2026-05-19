@@ -62,6 +62,8 @@
 
     /* NAV TABS */
     .nav-tabs { max-width: 900px; margin: 0 auto; display: flex; gap: 2px; padding: 6px 0 8px; overflow-x: auto; scrollbar-width: none; }
+    .nav-badge { position:absolute; top:-3px; right:-3px; background:#EF4444; color:#fff; font-size:8px; font-weight:900; min-width:15px; height:15px; border-radius:8px; display:flex; align-items:center; justify-content:center; padding:0 3px; border:1.5px solid var(--primary,#F97316); animation:badgePulse 1.5s infinite; }
+    @keyframes badgePulse { 0%,100%{transform:scale(1);} 50%{transform:scale(1.3);} }
     .nav-tabs::-webkit-scrollbar { display: none; }
     .nav-btn { padding: 7px 13px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; font-size: 12px; color: rgba(255,255,255,0.65); background: transparent; transition: all 0.2s; white-space: nowrap; flex-shrink: 0; }
     .nav-btn.active { background: rgba(255,255,255,0.22); color: #fff; }
@@ -128,7 +130,7 @@
     .top-bar h1 { margin-bottom: 0; }
     .btn-new { border: none; color: #fff; padding: 9px 15px; border-radius: 10px; cursor: pointer; font-weight: 700; font-size: 13px; white-space: nowrap; }
     .empty { background: #fff; border-radius: 14px; padding: 32px; text-align: center; border: 1px solid rgba(0,0,0,0.07); font-size: 14px; opacity: 0.55; }
-    .mes-select { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); color: #fff; padding: 8px 12px; border-radius: 10px; font-size: 13px; cursor: pointer; }
+    .mes-select { background: rgba(255,255,255,0.92); border: 1.5px solid rgba(255,255,255,0.6); color: #1A0A2E; padding: 8px 12px; border-radius: 10px; font-size: 13px; cursor: pointer; font-weight: 600; }
     .mes-select option { color: #1A0A2E; background: #fff; }
 
     /* ===== ROTA DO DIA ===== */
@@ -158,7 +160,8 @@
     .demanda-header { padding: 13px 15px; display: flex; align-items: center; gap: 11px; }
     .prioridade-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
     .demanda-info { flex: 1; }
-    .demanda-titulo { font-weight: 700; font-size: 14px; }
+    .demanda-titulo { font-weight: 700; font-size: 14px; word-break: break-word; white-space: normal; overflow-wrap: break-word; }
+    .demanda-desc, .reg-obs, .rota-obs { word-break: break-word; overflow-wrap: break-word; white-space: normal; }
     .demanda-meta { font-size: 12px; margin-top: 3px; opacity: 0.55; }
     .demanda-badges { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
     .demanda-detail { border-top: 1px solid rgba(0,0,0,0.07); padding: 12px 15px; display: none; }
@@ -167,6 +170,11 @@
     .status-badge { font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 20px; }
     .add-demanda-form { background: #fff; border-radius: 14px; border: 1px solid rgba(0,0,0,0.08); padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
     .add-demanda-form h3 { font-size: 14px; font-weight: 700; margin-bottom: 12px; }
+    .autocomplete-wrap { position: relative; }
+    .autocomplete-list { position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1.5px solid #F97316; border-radius: 10px; z-index: 999; max-height: 180px; overflow-y: auto; box-shadow: 0 4px 16px rgba(0,0,0,0.12); margin-top: 2px; }
+    .autocomplete-item { padding: 10px 14px; font-size: 13px; font-weight: 600; color: #1A0A2E; cursor: pointer; border-bottom: 1px solid #f5f5f5; }
+    .autocomplete-item:last-child { border-bottom: none; }
+    .autocomplete-item:active { background: #FFF7ED; color: #F97316; }
     .demanda-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
 
     /* SOLICITANTE BUTTONS */
@@ -663,7 +671,17 @@
       </select>
     </div>
 
-    <input class="filter-input" id="busca-demandas" placeholder="🔍 Buscar demanda..." oninput="renderDemandas()" style="width:100%;margin-bottom:10px"/>
+    <!-- Segmented Control Período -->
+    <div style="display:flex;background:#f5f5f5;border-radius:12px;padding:3px;gap:2px;margin-bottom:10px;" id="dem-periodo-ctrl">
+      <button id="dem-btn-semana" onclick="setFiltroPeriodoDem('semana')" style="flex:1;padding:8px 0;border-radius:10px;border:none;background:#fff;color:#F97316;font-size:12px;font-weight:800;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.1);transition:all 0.2s;">Semana</button>
+      <button id="dem-btn-mes" onclick="setFiltroPeriodoDem('mes')" style="flex:1;padding:8px 0;border-radius:10px;border:none;background:transparent;color:#aaa;font-size:12px;font-weight:600;cursor:pointer;transition:all 0.2s;">Mês</button>
+      <button id="dem-btn-todas" onclick="setFiltroPeriodoDem('todas')" style="flex:1;padding:8px 0;border-radius:10px;border:none;background:transparent;color:#aaa;font-size:12px;font-weight:600;cursor:pointer;transition:all 0.2s;">Todas</button>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;">
+      <input class="filter-input" id="busca-demandas" placeholder="🔍 Buscar demanda..." oninput="renderDemandas()" style="flex:1;margin-bottom:0;"/>
+      <input type="date" id="filtro-data-dem" onchange="renderDemandas()" style="padding:9px 10px;border-radius:10px;border:1px solid rgba(0,0,0,0.1);font-size:12px;font-family:'Sora',sans-serif;color:#1A0A2E;background:#fff;cursor:pointer;flex-shrink:0;"/>
+    </div>
     <button onclick="toggleDemandaForm()" id="btn-nova-demanda" style="width:100%;padding:13px;border-radius:14px;border:2px dashed #F97316;background:#FFF7ED;color:#F97316;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:12px">➕ Nova Demanda</button>
 
     <!-- Form nova demanda -->
@@ -672,7 +690,10 @@
       <div class="demanda-form-grid">
         <div style="grid-column:1/-1">
           <label class="form-label">Título *</label>
-          <input class="form-input" id="d-titulo" placeholder="" />
+          <div class="autocomplete-wrap">
+            <input class="form-input" id="d-titulo" placeholder="" autocomplete="off" oninput="acShow('d-titulo','ac-titulo',['titulo'])" onblur="acHide('ac-titulo')" />
+            <div class="autocomplete-list" id="ac-titulo" style="display:none"></div>
+          </div>
         </div>
         <div style="grid-column:1/-1">
           <label class="form-label">Solicitante</label>
@@ -696,11 +717,17 @@
         </div>
         <div style="grid-column:1/-1">
           <label class="form-label">Local</label>
-          <input class="form-input" id="d-local" placeholder="" />
+          <div class="autocomplete-wrap">
+            <input class="form-input" id="d-local" placeholder="" autocomplete="off" oninput="acShow('d-local','ac-local',['local'])" onblur="acHide('ac-local')" />
+            <div class="autocomplete-list" id="ac-local" style="display:none"></div>
+          </div>
         </div>
         <div style="grid-column:1/-1">
           <label class="form-label">ENDEREÇO</label>
-          <input class="form-input" id="d-endereco" placeholder="Rua, número, bairro..."/>
+          <div class="autocomplete-wrap">
+            <input class="form-input" id="d-endereco" placeholder="Rua, número, bairro..." autocomplete="off" oninput="acShow('d-endereco','ac-endereco',['endereco'])" onblur="acHide('ac-endereco')" />
+            <div class="autocomplete-list" id="ac-endereco" style="display:none"></div>
+          </div>
         </div>
         <div style="grid-column:1/-1">
           <label class="form-label">Data</label>
@@ -790,7 +817,10 @@
         </div>
         <div style="grid-column:1/-1">
           <label class="form-label">Descrição</label>
-          <textarea class="form-input" id="d-desc" rows="2" placeholder="Detalhes da tarefa..."></textarea>
+          <div class="autocomplete-wrap">
+            <textarea class="form-input" id="d-desc" rows="2" placeholder="Detalhes da tarefa..." autocomplete="off" oninput="acShow('d-desc','ac-desc',['desc'])"></textarea>
+            <div class="autocomplete-list" id="ac-desc" style="display:none"></div>
+          </div>
         </div>
       </div>
       <div class="btn-row">
@@ -1227,12 +1257,53 @@ const ABAS_EMP = [
   ],
 ];
 
+function getNavBadges(){
+  const badges={};
+  if(empresaAtual===1){
+    // Rota — pendentes + em andamento
+    const hoje=new Date().toISOString().slice(0,10);
+    const paradas=getRota(1,hoje)||[];
+    const rotaPend=paradas.filter(function(p){return p.status==='Pendente'||p.status==='Em andamento';}).length;
+    if(rotaPend>0) badges['rota']=rotaPend;
+    // Demandas — pendentes + em andamento
+    const demsPend=getDemandas(1).filter(function(d){return d.status==='Pendente'||d.status==='Em andamento';}).length;
+    if(demsPend>0) badges['demandas']=demsPend;
+  }
+  if(empresaAtual===0){
+    // Cartões — atrasados ou vencendo em 3 dias
+    const hoje2=new Date();
+    const cartAtencao=getCartoes().filter(function(c){
+      if(!c.venc) return false;
+      const dia=parseInt(c.venc);
+      const mesAtual=hoje2.getMonth();
+      const anoAtual=hoje2.getFullYear();
+      let proxVenc=new Date(anoAtual,mesAtual,dia);
+      if(proxVenc<hoje2) proxVenc=new Date(anoAtual,mesAtual+1,dia);
+      const diff=Math.ceil((proxVenc-hoje2)/(1000*60*60*24));
+      // Tem compras não pagas e vence em 3 dias ou já venceu
+      const comprasMes=getCompras().filter(function(p){return p.cartaoId===c.id;});
+      const temPendente=comprasMes.some(function(p){
+        return p.parcelas.some(function(x){
+          return x.mes===MESES[mesAtual]&&!(p.parcelasPagas||[]).includes(x.num);
+        });
+      });
+      return temPendente&&diff<=3;
+    }).length;
+    if(cartAtencao>0) badges['df-cartoes']=cartAtencao;
+  }
+  return badges;
+}
+
 function renderNavTabs(pageAtiva){
   const abas=ABAS_EMP[empresaAtual];
   const e=EMPRESAS[empresaAtual];
-  document.getElementById('nav-tabs').innerHTML=abas.map(a=>`
-    <button class="nav-btn ${a.id===pageAtiva?'active':''}" onclick="navTo('${a.id}')">${a.label}</button>
-  `).join('');
+  const badges=getNavBadges();
+  document.getElementById('nav-tabs').innerHTML=abas.map(function(a){
+    const n=badges[a.id]||0;
+    const badgeHtml=n>0?'<span class="nav-badge" style="border-color:'+e.primary+'">'+n+'</span>':'';
+    const activeClass=a.id===pageAtiva?'active':'';
+    return '<button class="nav-btn '+activeClass+'" style="position:relative" onclick="navTo(\''+a.id+'\')" >'+a.label+badgeHtml+'</button>';
+  }).join('');
 }
 
 function trocarEmpresa(idx){
@@ -1254,7 +1325,7 @@ function navTo(page,noReset){
   renderNavTabs(page);
   if(page==='painel') renderPainel();
   if(page==='rota'){ autoCarryRota(); renderRota(); }
-  if(page==='demandas'){ renderDemandas(); const dd=document.getElementById('d-data'); if(dd&&!dd.value) dd.value=todayStr(); }
+  if(page==='demandas'){ const dfd=document.getElementById('filtro-data-dem'); if(dfd&&!dfd.value) dfd.value=todayStr(); renderDemandas(); const dd=document.getElementById('d-data'); if(dd&&!dd.value) dd.value=todayStr(); }
   if(page==='demandas') setTimeout(toggleModeloDemanda, 50);
   if(page==='registros') renderRegistros();
   if(page==='novo'&&!noReset) resetForm();
@@ -1744,7 +1815,7 @@ function renderPainel(){
           <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center">
             <div style="font-size:30px;font-weight:800;color:${e.primary}">${total}</div>
             <div style="font-size:11px;font-weight:600;color:${e.textSub}">operações</div>
-            <div style="font-size:10px;color:#bbb;margin-top:2px">🧻 ${totalBobinas} bobinas</div>
+
           </div>
         </div>
         <div style="display:flex;flex-direction:column;gap:6px;width:100%">${legend}</div>
@@ -1799,14 +1870,14 @@ function renderPainel(){
         <div style="display:flex;align-items:flex-start;gap:12px">
           <div style="width:38px;height:38px;border-radius:10px;background:${bg}22;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${icon}</div>
           <div style="flex:1;min-width:0">
-            <div style="font-weight:800;font-size:15px;color:#1A1A2E;margin-bottom:4px">${r.nomeCliente||r.titulo||r.local||'—'}</div>
+            <div style="font-weight:800;font-size:15px;color:#1A1A2E;margin-bottom:4px;word-break:break-word;overflow-wrap:break-word">${r.nomeCliente||r.titulo||r.local||'—'}</div>
             <div style="font-size:12px;opacity:0.7;margin-bottom:2px">${icon} ${r.tipo} · 📅 ${fmtData(r.data)} ·</div>
             <div style="font-size:12px;opacity:0.7;margin-bottom:2px">${r.responsavel?'👤 '+r.responsavel:''}</div>
             ${(r.qtd||r.qtdBobinas)?`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:5px">
               ${r.qtd?`<span style="background:${bg}15;color:${bg};border-radius:5px;padding:2px 6px;font-size:11px;font-weight:700">📦 ${r.qtd}</span>`:''}
               ${r.qtdBobinas?`<span style="background:#3B82F615;color:#3B82F6;border-radius:5px;padding:2px 6px;font-size:11px;font-weight:700">🧻 ${r.qtdBobinas}</span>`:''}
             </div>`:''}
-            ${r.observacoes?`<div style="font-size:11px;color:#666;margin-top:4px">📝 ${r.observacoes}</div>`:''}
+            ${r.observacoes?`<div style="font-size:11px;color:#666;margin-top:4px;word-break:break-word;overflow-wrap:break-word">📝 ${r.observacoes}</div>`:''}
             <div style="font-size:11px;opacity:0.55;margin-top:4px">${r.local?`📍 ${r.local}`:''}${r.local&&r.responsavel?' · ':''}${r.responsavel?`👷 ${r.responsavel}`:''}</div>
           </div>
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
@@ -1936,7 +2007,7 @@ function renderRota(){
             <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.endereco)}" target="_blank" style="font-size:12px;color:#3B82F6;font-weight:600;text-decoration:underline;flex:1">🗺️ ${p.endereco}</a>
             <button onclick="event.stopPropagation();navigator.clipboard.writeText('${(p.endereco||'').replace(/'/g,"\\'")}').then(()=>mostrarSucesso())" style="background:#3B82F615;border:none;color:#3B82F6;border-radius:6px;padding:2px 7px;font-size:10px;font-weight:700;cursor:pointer">📋</button>
           </div>`:''}
-          ${p.obs?`<div style="font-size:11px;color:#666;margin-bottom:8px">💬 ${p.obs}</div>`:''}
+          ${p.obs?`<div style="font-size:11px;color:#666;margin-bottom:8px;word-break:break-word;overflow-wrap:break-word">💬 ${p.obs}</div>`:''}
           <div style="display:flex;gap:5px;flex-wrap:wrap" onclick="event.stopPropagation()">
             <button onclick="mudarStatusRota('${sel}',${p.id},'Em andamento')" style="padding:5px 10px;border-radius:8px;border:1.5px solid ${CORES_ST['Em andamento']};background:${status==='Em andamento'?BGS_ST['Em andamento']:'transparent'};color:${CORES_ST['Em andamento']};font-size:11px;font-weight:700;cursor:pointer">🔄 Andamento</button>
             <button onclick="mudarStatusRota('${sel}',${p.id},'Pendente')" style="padding:5px 10px;border-radius:8px;border:1.5px solid ${CORES_ST['Pendente']};background:${status==='Pendente'?BGS_ST['Pendente']:'transparent'};color:${CORES_ST['Pendente']};font-size:11px;font-weight:700;cursor:pointer">⏳ Pendente</button>
@@ -2072,13 +2143,39 @@ function renderDemandas(){
   document.getElementById('demandas-sub').style.color=e.textSub;
   document.getElementById('d-btn-salvar').style.background=`linear-gradient(135deg,${e.primary},${e.primaryDark})`;
   const busca=(document.getElementById('busca-demandas')?.value||'').toLowerCase();
+  // Data selecionada (padrão = hoje)
+  const dataFiltroEl = document.getElementById('filtro-data-dem');
+  if(dataFiltroEl && !dataFiltroEl.value) dataFiltroEl.value = todayStr();
+  const dataFiltro = dataFiltroEl ? dataFiltroEl.value : todayStr();
+  const dataFiltroObj = new Date(dataFiltro+'T12:00:00');
+
+  // Calcular início da semana e mês baseado na DATA SELECIONADA
+  const inicioSemana = new Date(dataFiltroObj);
+  inicioSemana.setDate(dataFiltroObj.getDate() - dataFiltroObj.getDay());
+  inicioSemana.setHours(0,0,0,0);
+  const fimSemana = new Date(inicioSemana);
+  fimSemana.setDate(inicioSemana.getDate() + 6);
+  fimSemana.setHours(23,59,59,999);
+  const inicioMes = new Date(dataFiltroObj.getFullYear(), dataFiltroObj.getMonth(), 1);
+  const fimMes = new Date(dataFiltroObj.getFullYear(), dataFiltroObj.getMonth()+1, 0, 23, 59, 59);
+
   const lista=(filtro==='Todos'?demandas:demandas.filter(d=>d.status===filtro)).filter(d=>{
+    // Filtro de período baseado na data selecionada
+    if(filtroPeriodoDem !== 'todas'){
+      const dc = d.dataCriacao ? new Date(d.dataCriacao+'T12:00:00') : null;
+      if(!dc) return false;
+      if(filtroPeriodoDem==='semana' && (dc < inicioSemana || dc > fimSemana)) return false;
+      if(filtroPeriodoDem==='mes' && (dc < inicioMes || dc > fimMes)) return false;
+    }
+    // Filtro de busca
     if(!busca) return true;
     return (d.titulo||'').toLowerCase().includes(busca)||
            (d.local||'').toLowerCase().includes(busca)||
            (d.solicitante||'').toLowerCase().includes(busca)||
            (d.responsavel||'').toLowerCase().includes(busca)||
-           (d.correiosCliente||'').toLowerCase().includes(busca);
+           (d.correiosCliente||'').toLowerCase().includes(busca)||
+           (d.desc||'').toLowerCase().includes(busca)||
+           (d.endereco||'').toLowerCase().includes(busca);
   });
   const sorted=[...lista].sort((a,b)=>{
     const da=a.dataCriacao||'0000-00-00';
@@ -2148,7 +2245,7 @@ function renderDemandas(){
           ${d.solicitante?`<div style="background:#fff;border-radius:8px;padding:5px 10px;font-size:12px;font-weight:600;border:1px solid rgba(0,0,0,0.08)">👤 ${d.solicitante}</div>`:''}
           ${d.local?`<div style="background:#fff;border-radius:8px;padding:5px 10px;font-size:12px;font-weight:600;border:1px solid rgba(0,0,0,0.08)">📍 ${d.local}</div>`:''}
         </div>`:''}
-        ${d.desc?`<div style="font-size:13px;margin-bottom:12px;opacity:0.8">${d.desc}</div>`:''}
+        ${d.desc?`<div style="font-size:13px;margin-bottom:12px;opacity:0.8;word-break:break-word;overflow-wrap:break-word">${d.desc}</div>`:''}
         <!-- Linha 1: status -->
         <div style="display:flex;gap:4px;margin-bottom:8px">
           ${['Pendente','Em andamento','Concluída','Cancelada'].map(st=>`
@@ -2249,6 +2346,75 @@ function importarDados(event){
   reader.readAsText(file);
 }
 
+function acShow(inputId, listId, campos){
+  var input = document.getElementById(inputId);
+  var list  = document.getElementById(listId);
+  if(!input||!list) return;
+  var val = (input.value||input.textContent||'').toLowerCase().trim();
+  if(val.length < 1){ list.style.display='none'; return; }
+  // Coletar sugestões únicas das demandas
+  var dems = getDemandas(empresaAtual)||[];
+  var sugs = [];
+  dems.forEach(function(d){
+    campos.forEach(function(campo){
+      var v = (d[campo]||'').trim();
+      if(v && v.toLowerCase().startsWith(val) && !sugs.includes(v)){
+        sugs.push(v);
+      }
+    });
+  });
+  if(sugs.length===0){ list.style.display='none'; return; }
+  list.innerHTML = sugs.slice(0,6).map(function(s){
+    var sv = s.replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    return '<div class="autocomplete-item" onmousedown="acSelect(\'' + inputId + '\',\'' + listId + '\',\'' + sv + '\')">' + s + '</div>';
+  }).join('');
+  list.style.display='block';
+}
+
+function acSelect(inputId, listId, valor){
+  var input = document.getElementById(inputId);
+  var list  = document.getElementById(listId);
+  if(input.tagName==='TEXTAREA') input.value=valor;
+  else input.value=valor;
+  if(list) list.style.display='none';
+  // Se selecionou o titulo, tentar preencher local e endereco automaticamente
+  if(inputId==='d-titulo'){
+    var dems = getDemandas(empresaAtual)||[];
+    var dem = dems.find(function(d){ return (d.titulo||'')=== valor; });
+    if(dem){
+      var localEl   = document.getElementById('d-local');
+      var endEl     = document.getElementById('d-endereco');
+      var descEl    = document.getElementById('d-desc');
+      if(localEl && dem.local && !localEl.value)   localEl.value   = dem.local;
+      if(endEl   && dem.endereco && !endEl.value)  endEl.value     = dem.endereco;
+      if(descEl  && dem.desc && !descEl.value)     descEl.value    = dem.desc;
+    }
+  }
+}
+
+function acHide(listId){
+  setTimeout(function(){ 
+    var list=document.getElementById(listId); 
+    if(list) list.style.display='none'; 
+  }, 200);
+}
+
+function setFiltroPeriodoDem(periodo){
+  filtroPeriodoDem = periodo;
+  const e = EMPRESAS[empresaAtual];
+  ['semana','mes','todas'].forEach(function(p){
+    var btn = document.getElementById('dem-btn-'+p);
+    if(!btn) return;
+    var ativo = p === periodo;
+    btn.style.background = ativo ? '#fff' : 'transparent';
+    btn.style.color = ativo ? e.primary : '#aaa';
+    btn.style.fontWeight = ativo ? '800' : '600';
+    btn.style.boxShadow = ativo ? '0 1px 4px rgba(0,0,0,0.1)' : 'none';
+    btn.style.borderRadius = '10px';
+  });
+  renderDemandas();
+}
+
 function toggleDemandaForm(){
   const form = document.getElementById('demanda-form-card');
   const btn = document.getElementById('btn-nova-demanda');
@@ -2328,13 +2494,17 @@ function mudarStatus(id,status){
 }
 
 let solicitanteSelecionado='';
+let filtroPeriodoDem='todas';
+let fixasExpandNP=false;
+let fixasExpandP=false;
 
 function selecionarSolicitante(nome){
   solicitanteSelecionado=nome;
   const e=EMPRESAS[empresaAtual];
   const ids={'LUCAS Suport':'sol-LUCAS','THAY Suport':'sol-THAY','PEDRO Suport':'sol-PEDRO',
     'VIC Marketing':'sol-VICTORIA','ISABELLA Diretoria':'sol-ISABELLA',
-    'KALINE Diretoria':'sol-KALINE','CARIN Diretoria':'sol-CARIN','POLO CHAPECÓ':'sol-POLO','Financeiro OPAY':'sol-FINANCEIRO'};
+    'KALINE Diretoria':'sol-KALINE','CARIN Diretoria':'sol-CARIN','POLO CHAPECÓ':'sol-POLO',
+    'Financeiro OPAY':'sol-FINANCEIRO','🏦 OPAY':'sol-OPAY','⚠️ Outros':'sol-OUTROS'};
   document.querySelectorAll('.sol-btn').forEach(b=>{
     const sel=b.id===ids[nome];
     b.classList.toggle('selected',sel);
@@ -2537,8 +2707,16 @@ function salvarDemanda(){
   const dch=document.getElementById('d-correios-check'); if(dch){dch.textContent='';dch.style.background='transparent';dch.style.borderColor='#ccc';}
   limparModelo();
   limparAdquirente();
-  editandoDemId=null;
   limparSolicitante();
+  // Reset bobinas
+  if(bobinasMarcado) toggleBobinas();
+  bobinasMarcado=false; qtdBobinasSel=0;
+  limparQtdBobinas();
+  const bobWrap=document.getElementById('d-bobinas-qtd-wrap'); if(bobWrap) bobWrap.style.display='none';
+  const bobCheck=document.getElementById('d-bobinas-check'); if(bobCheck){bobCheck.textContent='';bobCheck.style.background='#fff';bobCheck.style.borderColor='#ccc';}
+  // Reset outros
+  document.getElementById('d-outros-wrap').style.display='none';
+  editandoDemId=null;
   document.getElementById('dem-form-titulo').textContent='➕ Nova Demanda';
   document.getElementById('d-btn-salvar').textContent='✅ Salvar Demanda';
   const dfc=document.getElementById('demanda-form-card'); if(dfc) dfc.style.display='none';
@@ -2630,14 +2808,14 @@ function renderRegistros(){
       <div style="display:flex;align-items:flex-start;gap:12px">
         <div style="width:40px;height:40px;border-radius:10px;background:${bg}22;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">${icon}</div>
         <div style="flex:1;min-width:0">
-          <div style="font-weight:800;font-size:15px;color:#1A1A2E;margin-bottom:4px">${r.nomeCliente||r.titulo||r.local||'—'}</div>
+          <div style="font-weight:800;font-size:15px;color:#1A1A2E;margin-bottom:4px;word-break:break-word;overflow-wrap:break-word">${r.nomeCliente||r.titulo||r.local||'—'}</div>
           <div style="font-size:12px;opacity:0.7;margin-bottom:2px">${icon} ${r.tipo} · 📅 ${fmtData(r.data)} ·</div>
           <div style="font-size:12px;opacity:0.7;margin-bottom:2px">${r.responsavel?'👤 '+r.responsavel:''}</div>
           ${(r.qtd||r.qtdBobinas)?`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:5px">
             ${r.qtd?`<span style="background:${bg}20;color:${bg};border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700">📦 ${r.qtd}</span>`:''}
             ${r.qtdBobinas?`<span style="background:#3B82F620;color:#3B82F6;border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700">🧻 ${r.qtdBobinas}</span>`:''}
           </div>`:''}
-          ${r.observacoes?`<div style="font-size:11px;color:#555;margin-top:4px">📝 ${r.observacoes}</div>`:''}
+          ${r.observacoes?`<div style="font-size:11px;color:#555;margin-top:4px;word-break:break-word;overflow-wrap:break-word">📝 ${r.observacoes}</div>`:''}
           ${r.endereco?`<div style="display:flex;align-items:center;gap:6px;margin-top:5px" onclick="event.stopPropagation()">
             <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(r.endereco)}" target="_blank" style="font-size:12px;color:#3B82F6;font-weight:600;text-decoration:underline;flex:1">🗺️ ${r.endereco}</a>
           </div>`:''}
@@ -4952,7 +5130,36 @@ function renderDFPainel(){
           if(vt) linhasP+='<div style="font-size:9px;color:#ccc;">'+vt+'</div>';
           linhasP+='</div><span style="font-size:12px;font-weight:800;color:#10B981;flex-shrink:0;">'+fmtReal(valorMes)+' ✅</span></div>';
         });
-        if(totalFixas>0){linhasP+='<div style="display:flex;align-items:center;gap:6px;padding:7px 0;border-bottom:1px solid #f5f5f5;"><div style="width:8px;height:8px;border-radius:50%;background:#DC2626;flex-shrink:0;"></div><div style="flex:1;"><div style="font-size:12px;font-weight:700;color:#aaa;">Fixas</div></div><span style="font-size:12px;font-weight:800;color:#10B981;flex-shrink:0;">'+fmtReal(totalFixas)+' ✅</span></div>';}
+        // Verificar se fixas do mês foram pagas
+        var fixasDoMes=getFixas().filter(function(f){return (f.mesesAtivos||[]).some(function(m){return m.startsWith(mesFiltro);});});
+        var fixasPagas=fixasDoMes.filter(function(f){return (f.mesesPagos||[]).some(function(m){return m.startsWith(mesFiltro);});});
+        var fixasNaoPagas=fixasDoMes.filter(function(f){return !(f.mesesPagos||[]).some(function(m){return m.startsWith(mesFiltro);});});
+        var totalFixasPagas=fixasPagas.reduce(function(a,f){return a+(f.valor||0);},0);
+        var totalFixasNP=fixasNaoPagas.reduce(function(a,f){return a+(f.valor||0);},0);
+        if(totalFixasNP>0){
+          var detNP=fixasNaoPagas.map(function(f){return '<div style="font-size:11px;color:#DC2626;padding:2px 0;">• '+f.nome+' — '+fmtReal(f.valor)+'</div>';}).join('');
+          linhasNP+='<div onclick="event.stopPropagation();fixasExpandNP=!fixasExpandNP;renderDFPainel()" style="cursor:pointer;padding:7px 0;border-bottom:1px solid #f5f5f5;">';
+          linhasNP+='<div style="display:flex;align-items:center;gap:6px;">';
+          linhasNP+='<div style="width:8px;height:8px;border-radius:50%;background:#DC2626;flex-shrink:0;"></div>';
+          linhasNP+='<div style="flex:1;"><div style="font-size:12px;font-weight:700;color:#1A0A2E;">📋 Fixas <span style=\"font-size:10px;color:#DC2626;\">('+fixasNaoPagas.length+')</span></div></div>';
+          linhasNP+='<span style="font-size:12px;font-weight:800;color:#DC2626;flex-shrink:0;">'+fmtReal(totalFixasNP)+'</span>';
+          linhasNP+='<span style="font-size:10px;color:#aaa;margin-left:4px;">'+(fixasExpandNP?'▲':'▼')+'</span>';
+          linhasNP+='</div>';
+          if(fixasExpandNP) linhasNP+='<div style="padding:4px 0 2px 14px;">'+detNP+'</div>';
+          linhasNP+='</div>';
+        }
+        if(totalFixasPagas>0){
+          var detP=fixasPagas.map(function(f){return '<div style="font-size:11px;color:#10B981;padding:2px 0;">• '+f.nome+' — '+fmtReal(f.valor)+' ✅</div>';}).join('');
+          linhasP+='<div onclick="event.stopPropagation();fixasExpandP=!fixasExpandP;renderDFPainel()" style="cursor:pointer;padding:7px 0;border-bottom:1px solid #f5f5f5;">';
+          linhasP+='<div style="display:flex;align-items:center;gap:6px;">';
+          linhasP+='<div style="width:8px;height:8px;border-radius:50%;background:#DC2626;flex-shrink:0;"></div>';
+          linhasP+='<div style="flex:1;"><div style="font-size:12px;font-weight:700;color:#aaa;">📋 Fixas <span style=\"font-size:10px;color:#10B981;\">('+fixasPagas.length+')</span></div></div>';
+          linhasP+='<span style="font-size:12px;font-weight:800;color:#10B981;flex-shrink:0;">'+fmtReal(totalFixasPagas)+' ✅</span>';
+          linhasP+='<span style="font-size:10px;color:#aaa;margin-left:4px;">'+(fixasExpandP?'▲':'▼')+'</span>';
+          linhasP+='</div>';
+          if(fixasExpandP) linhasP+='<div style="padding:4px 0 2px 14px;">'+detP+'</div>';
+          linhasP+='</div>';
+        }
         if(totalGasolina>0){linhasP+='<div style="display:flex;align-items:center;gap:6px;padding:7px 0;"><div style="width:8px;height:8px;border-radius:50%;background:#F97316;flex-shrink:0;"></div><div style="flex:1;"><div style="font-size:12px;font-weight:700;color:#aaa;">Gasolina</div></div><span style="font-size:12px;font-weight:800;color:#10B981;flex-shrink:0;">'+fmtReal(totalGasolina)+' ✅</span></div>';}
         return '<div style="display:grid;grid-template-columns:1fr 1px 1fr;gap:10px;padding:0 2px;"><div style="display:flex;flex-direction:column;">'+linhasNP+'</div><div style="background:#f0f0f0;"></div><div style="display:flex;flex-direction:column;">'+linhasP+'</div></div>';
       })()}
