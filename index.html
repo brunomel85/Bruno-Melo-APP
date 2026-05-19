@@ -2913,19 +2913,26 @@ function toggleGraficoCartao(id){ cartaoGraficoAberto=(cartaoGraficoAberto===id)
 function recriarRegistrosDasDemandas(){
   if(!confirm('Isso vai APAGAR todos os registros e recriar a partir das demandas. Continuar?')) return;
   for(var emp=0; emp<3; emp++){
-    var dems = ls('demandas_'+emp,[])||[];
+    // Chave correta: log_dem_
+    var dems = ls('log_dem_'+emp,[])||[];
     var novosRegs = [];
     dems.forEach(function(d){
       if(!d.titulo) return;
-      var hoje = d.dataConclusao || d.prazo || todayStr();
-      var mesIdx = new Date(hoje+'T12:00:00').getMonth();
+      // Data: usar dataConclusao ou dataCriacao ou hoje
+      var data = d.dataConclusao || d.dataCriacao || todayStr();
+      var mesIdx = new Date(data+'T12:00:00').getMonth();
       var mes = MESES[mesIdx];
+      // Status
+      var status = d.status==='Concluída' ? 'concluido'
+                 : d.status==='Cancelada' ? 'cancelado'
+                 : d.status==='Em andamento' ? 'andamento'
+                 : 'pendente';
       novosRegs.push({
         id: d.id || Date.now()+Math.random(),
         nomeCliente: d.titulo,
-        tipo: d.prazo || d.tipo || 'Entrega de Maquininha',
-        local: d.local || d.titulo,
-        data: hoje,
+        tipo: d.prazo || 'Entrega de Maquininha',
+        local: d.local || '',
+        data: data,
         mes: mes,
         responsavel: d.responsavel || d.solicitante || '',
         modelo: d.modelo || '',
@@ -2933,16 +2940,16 @@ function recriarRegistrosDasDemandas(){
         qtd: d.qtd || '',
         qtdBobinas: d.comBobinas ? (d.qtdBobinas||'') : '',
         rastreio: d.rastreio || '',
-        observacoes: d.desc || d.obs || '',
-        status: d.status==='Concluída' ? 'concluido' : d.status==='Cancelada' ? 'cancelado' : 'concluido',
+        observacoes: d.desc || '',
+        status: status,
         dataConclusao: d.dataConclusao || ''
       });
     });
     lsSet('log_reg_'+emp, novosRegs);
   }
-  alert('✅ Registros recriados com sucesso!');
+  alert('✅ Registros recriados com sucesso! Total: '+ls('log_reg_0',[]).length+' registros.');
   renderPainel();
-  renderRegistros();
+  if(document.getElementById('lista-registros')) renderRegistros();
 }
 
 function migrarRegistros(){
