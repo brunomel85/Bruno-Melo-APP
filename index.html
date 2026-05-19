@@ -1799,9 +1799,9 @@ function renderPainel(){
         <div style="display:flex;align-items:flex-start;gap:12px">
           <div style="width:38px;height:38px;border-radius:10px;background:${bg}22;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${icon}</div>
           <div style="flex:1;min-width:0">
-            ${r.nomeCliente?`<div style="font-weight:800;font-size:15px;color:#1A1A2E;margin-bottom:2px">${r.nomeCliente}</div>`:''}
-            <div style="font-weight:700;font-size:${r.nomeCliente?'12px':'14px'};color:${bg};margin-bottom:2px">${r.tipo}</div>
-            <div style="font-size:11px;opacity:0.55;margin-top:2px">${fmtData(r.data)}${diaSemana?' · '+diaSemana:''}</div>
+            <div style="font-weight:800;font-size:15px;color:#1A1A2E;margin-bottom:4px">${r.nomeCliente||r.titulo||r.local||'—'}</div>
+            <div style="font-size:12px;opacity:0.7;margin-bottom:2px">${icon} ${r.tipo} · 📅 ${fmtData(r.data)} ·</div>
+            <div style="font-size:12px;opacity:0.7;margin-bottom:2px">${r.responsavel?'👤 '+r.responsavel:''}</div>
             ${(r.qtd||r.qtdBobinas)?`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:5px">
               ${r.qtd?`<span style="background:${bg}15;color:${bg};border-radius:5px;padding:2px 6px;font-size:11px;font-weight:700">📦 ${r.qtd}</span>`:''}
               ${r.qtdBobinas?`<span style="background:#3B82F615;color:#3B82F6;border-radius:5px;padding:2px 6px;font-size:11px;font-weight:700">🧻 ${r.qtdBobinas}</span>`:''}
@@ -1979,6 +1979,7 @@ function mudarStatusRota(data,id,novoStatus){
       const reg={
         id:Date.now(),
         tipo:d.prazo||parada.tipo||'Entrega de Maquininha',
+        nomeCliente:d.titulo||parada.cliente||'',
         local:d.local||parada.local||d.titulo,
         data:hoje, mes,
         responsavel:d.responsavel||d.titulo,
@@ -2004,6 +2005,7 @@ function mudarStatusRota(data,id,novoStatus){
     const reg={
       id:Date.now(),
       tipo:parada.tipo||'Entrega de Maquininha',
+      nomeCliente:parada.cliente||'',
       local:parada.local,
       data, mes,
       responsavel:parada.cliente,
@@ -2036,6 +2038,7 @@ function toggleRotaCheck(data,id){
     const reg={
       id:Date.now(),
       tipo:parada.tipo||'Entrega de Maquininha',
+      nomeCliente:parada.cliente||'',
       local:parada.local,
       data:data,
       mes:mes,
@@ -2303,6 +2306,7 @@ function mudarStatus(id,status){
     const reg={
       id:Date.now(),
       tipo:d.prazo||'Entrega de Maquininha',
+      nomeCliente:d.titulo||'',
       local:d.local||d.desc||d.titulo,
       data:hoje, mes,
       responsavel:d.responsavel||d.titulo,
@@ -2622,18 +2626,23 @@ function renderRegistros(){
     const dSem=r.data?dias[new Date(r.data+'T12:00:00').getDay()]:'';
     const bc=r.status==='concluido'?'#10B981':r.status==='cancelado'?'#EF4444':r.status==='andamento'?'#3B82F6':r.status==='pendente'?'#F59E0B':bg;
     const open=detalheAberto===r.id;
-    return `<div style="background:#fff;border-radius:14px;border:1.5px solid ${bc};border-left:4px solid ${bc};padding:14px;margin-bottom:10px;cursor:pointer" onclick="toggleDetalhe(${r.id})">
+    return `<div style="background:${bc}08;border-radius:14px;border:1.5px solid ${bc};border-left:4px solid ${bc};padding:14px;margin-bottom:10px;cursor:pointer" onclick="toggleDetalhe(${r.id})">
       <div style="display:flex;align-items:flex-start;gap:12px">
-        <div style="width:38px;height:38px;border-radius:10px;background:${bg}22;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${icon}</div>
+        <div style="width:40px;height:40px;border-radius:10px;background:${bg}22;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">${icon}</div>
         <div style="flex:1;min-width:0">
-          ${r.nomeCliente?`<div style="font-weight:800;font-size:15px;color:#1A1A2E;margin-bottom:2px">${r.nomeCliente}</div>`:''}
-          <div style="font-weight:700;font-size:${r.nomeCliente?'12px':'14px'};color:${bg};margin-bottom:2px">${r.tipo}</div>
-          <div style="font-size:11px;opacity:0.55;margin-top:2px">${fmtData(r.data)}${dSem?' · '+dSem:''}</div>
+          <div style="font-weight:800;font-size:15px;color:#1A1A2E;margin-bottom:4px">${r.nomeCliente||r.titulo||r.local||'—'}</div>
+          <div style="font-size:12px;opacity:0.7;margin-bottom:2px">${icon} ${r.tipo} · 📅 ${fmtData(r.data)} ·</div>
+          <div style="font-size:12px;opacity:0.7;margin-bottom:2px">${r.responsavel?'👤 '+r.responsavel:''}</div>
           ${(r.qtd||r.qtdBobinas)?`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:5px">
-            ${r.qtd?`<span style="background:${bg}15;color:${bg};border-radius:5px;padding:2px 6px;font-size:11px;font-weight:700">📦 ${r.qtd}</span>`:''}
-            ${r.qtdBobinas?`<span style="background:#3B82F615;color:#3B82F6;border-radius:5px;padding:2px 6px;font-size:11px;font-weight:700">🧻 ${r.qtdBobinas}</span>`:''}
+            ${r.qtd?`<span style="background:${bg}20;color:${bg};border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700">📦 ${r.qtd}</span>`:''}
+            ${r.qtdBobinas?`<span style="background:#3B82F620;color:#3B82F6;border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700">🧻 ${r.qtdBobinas}</span>`:''}
           </div>`:''}
-          <div style="font-size:11px;opacity:0.55;margin-top:4px">${r.local?`📍 ${r.local}`:''}${r.local&&r.responsavel?' · ':''}${r.responsavel?`👷 ${r.responsavel}`:''}</div>
+          ${r.observacoes?`<div style="font-size:11px;color:#555;margin-top:4px">📝 ${r.observacoes}</div>`:''}
+          ${r.endereco?`<div style="display:flex;align-items:center;gap:6px;margin-top:5px" onclick="event.stopPropagation()">
+            <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(r.endereco)}" target="_blank" style="font-size:12px;color:#3B82F6;font-weight:600;text-decoration:underline;flex:1">🗺️ ${r.endereco}</a>
+          </div>`:''}
+          ${r.local||r.bairro?`<div style="font-size:11px;opacity:0.55;margin-top:4px">${r.local?`📍 ${r.local}`:''}${r.local&&r.bairro?' · ':''}${r.bairro?`🗺️ ${r.bairro}`:''}</div>`:''}
+          ${r.rastreio?`<div style="font-size:11px;color:#555;margin-top:3px">📦 Código Rastreio: ${r.rastreio}</div>`:''}
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
           ${r.status==='concluido'?`<div style="font-size:10px;font-weight:700;color:#10B981;background:#D1FAE5;padding:3px 8px;border-radius:10px">✅ Concluído</div>`:''}
@@ -2643,13 +2652,12 @@ function renderRegistros(){
           <span style="font-size:10px;color:#bbb">${open?'▲':'▼'}</span>
         </div>
       </div>
-      ${open?`<div style="margin-top:10px;padding-top:10px;border-top:1px solid #f0f0f0">
-        ${r.modelo?`<div style="font-size:12px;color:#555;margin-bottom:4px">🖥️ <b>Modelo:</b> ${r.modelo}</div>`:''}
-        ${r.adquirente?`<div style="font-size:12px;color:#555;margin-bottom:4px">🏦 <b>Adquirente:</b> ${r.adquirente}</div>`:''}
-        ${r.observacoes?`<div style="font-size:12px;color:#555;margin-bottom:8px">📝 ${r.observacoes}</div>`:''}
-        <div style="display:flex;gap:8px;margin-top:8px">
-          <button style="flex:1;padding:8px;border-radius:10px;border:1.5px solid ${bg};background:${bg}15;color:${bg};font-size:12px;font-weight:700;cursor:pointer" onclick="event.stopPropagation();editarReg(${r.id})">✏️ Editar</button>
-          <button style="flex:1;padding:8px;border-radius:10px;border:1.5px solid #EF4444;background:#FEE2E215;color:#EF4444;font-size:12px;font-weight:700;cursor:pointer" onclick="event.stopPropagation();excluirReg(${r.id})">🗑️ Excluir</button>
+      ${open?`<div style="margin-top:10px;padding-top:10px;border-top:1px solid ${bc}33">
+        ${r.modelo?`<div style="font-size:12px;color:#555;margin-bottom:5px">🖥️ <b>Modelo:</b> ${r.modelo}</div>`:''}
+        ${r.adquirente?`<div style="font-size:12px;color:#555;margin-bottom:5px">🏦 <b>Adquirente:</b> ${r.adquirente}</div>`:''}
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button style="flex:1;padding:9px;border-radius:10px;border:1.5px solid ${bg};background:${bg}15;color:${bg};font-size:12px;font-weight:700;cursor:pointer" onclick="event.stopPropagation();editarReg(${r.id})">✏️ Editar</button>
+          <button style="flex:1;padding:9px;border-radius:10px;border:1.5px solid #EF4444;background:#FEE2E215;color:#EF4444;font-size:12px;font-weight:700;cursor:pointer" onclick="event.stopPropagation();excluirReg(${r.id})">🗑️ Excluir</button>
         </div>
       </div>`:''}
     </div>`;
@@ -2896,6 +2904,50 @@ function toggleCartao(id){ cartaoAberto=cartaoAberto===id?null:id; renderCartoes
 function toggleRotaItem(id){ rotaItemAberto=(rotaItemAberto===id)?null:id; renderRota(); }
 function setGraficoAno(id,ano){ cartaoGraficoAno[id]=parseInt(ano); renderCartoes(); }
 function toggleGraficoCartao(id){ cartaoGraficoAberto=(cartaoGraficoAberto===id)?null:id; if(!cartaoGraficoAno[id])cartaoGraficoAno[id]=new Date().getFullYear(); renderCartoes(); }
+
+function migrarRegistros(){
+  // Roda uma vez: conecta registros antigos com suas demandas pelo titulo/local
+  for(var emp=0; emp<3; emp++){
+    var regs = ls('log_reg_'+emp,[])||[];
+    var dems = ls('demandas_'+emp,[])||[];
+    var alterou = false;
+    regs.forEach(function(r){
+      if(r.nomeCliente) return; // já tem, pula
+      // Tentar achar a demanda correspondente
+      // 1. Por observacoes (contém o título quando criado via demanda)
+      var dem = null;
+      if(r.observacoes){
+        dem = dems.find(function(d){
+          return d.titulo && (
+            r.observacoes.includes(d.titulo) ||
+            r.local === d.titulo ||
+            r.local === (d.local||'') ||
+            r.responsavel === d.titulo
+          );
+        });
+      }
+      // 2. Por local exato
+      if(!dem){
+        dem = dems.find(function(d){
+          return d.titulo && (
+            r.local === d.titulo ||
+            r.local === (d.local||'') ||
+            (d.local && r.local && r.local.toLowerCase() === d.local.toLowerCase())
+          );
+        });
+      }
+      if(dem){
+        r.nomeCliente = dem.titulo;
+        alterou = true;
+      } else if(r.local && r.local !== r.tipo){
+        // Usar o local como nome se for diferente do tipo
+        r.nomeCliente = r.local;
+        alterou = true;
+      }
+    });
+    if(alterou) lsSet('log_reg_'+emp, regs);
+  }
+}
 
 function initGraficoEvents(){
   document.addEventListener('click',function(e){
@@ -5373,6 +5425,7 @@ renderTipoBtns();
 renderNavTabs('painel');
 renderPainel();
 initGraficoEvents();
+migrarRegistros();
 </script>
 </body>
 </html>
