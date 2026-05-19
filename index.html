@@ -1272,19 +1272,18 @@ function getNavBadges(){
   if(empresaAtual===0){
     // Cartões — atrasados ou vencendo em 3 dias
     const hoje2=new Date();
+    const mesAtual2=hoje2.getMonth();
+    const anoAtual2=hoje2.getFullYear();
     const cartAtencao=getCartoes().filter(function(c){
       if(!c.venc) return false;
       const dia=parseInt(c.venc);
-      const mesAtual=hoje2.getMonth();
-      const anoAtual=hoje2.getFullYear();
-      let proxVenc=new Date(anoAtual,mesAtual,dia);
-      if(proxVenc<hoje2) proxVenc=new Date(anoAtual,mesAtual+1,dia);
+      let proxVenc=new Date(anoAtual2,mesAtual2,dia);
+      if(proxVenc<hoje2) proxVenc=new Date(anoAtual2,mesAtual2+1,dia);
       const diff=Math.ceil((proxVenc-hoje2)/(1000*60*60*24));
-      // Tem compras não pagas e vence em 3 dias ou já venceu
       const comprasMes=getCompras().filter(function(p){return p.cartaoId===c.id;});
       const temPendente=comprasMes.some(function(p){
         return p.parcelas.some(function(x){
-          return x.mes===MESES[mesAtual]&&!(p.parcelasPagas||[]).includes(x.num);
+          return x.mes===MESES[mesAtual2]&&!(p.parcelasPagas||[]).includes(x.num);
         });
       });
       return temPendente&&diff<=3;
@@ -5137,7 +5136,7 @@ function renderDFPainel(){
         var totalFixasPagas=fixasPagas.reduce(function(a,f){return a+(f.valor||0);},0);
         var totalFixasNP=fixasNaoPagas.reduce(function(a,f){return a+(f.valor||0);},0);
         if(totalFixasNP>0){
-          var detNP=fixasNaoPagas.map(function(f){return '<div style="font-size:11px;color:#DC2626;padding:2px 0;">• '+f.nome+' — '+fmtReal(f.valor)+'</div>';}).join('');
+          var detNP=fixasNaoPagas.map(function(f){return '<div style="font-size:11px;color:#DC2626;padding:2px 0;">• '+(f.desc||f.nome||'Fixa')+' — '+fmtReal(f.valor)+'</div>';}).join('');
           linhasNP+='<div onclick="event.stopPropagation();fixasExpandNP=!fixasExpandNP;renderDFPainel()" style="cursor:pointer;padding:7px 0;border-bottom:1px solid #f5f5f5;">';
           linhasNP+='<div style="display:flex;align-items:center;gap:6px;">';
           linhasNP+='<div style="width:8px;height:8px;border-radius:50%;background:#DC2626;flex-shrink:0;"></div>';
@@ -5149,7 +5148,7 @@ function renderDFPainel(){
           linhasNP+='</div>';
         }
         if(totalFixasPagas>0){
-          var detP=fixasPagas.map(function(f){return '<div style="font-size:11px;color:#10B981;padding:2px 0;">• '+f.nome+' — '+fmtReal(f.valor)+' ✅</div>';}).join('');
+          var detP=fixasPagas.map(function(f){return '<div style="font-size:11px;color:#10B981;padding:2px 0;">• '+(f.desc||f.nome||'Fixa')+' — '+fmtReal(f.valor)+' ✅</div>';}).join('');
           linhasP+='<div onclick="event.stopPropagation();fixasExpandP=!fixasExpandP;renderDFPainel()" style="cursor:pointer;padding:7px 0;border-bottom:1px solid #f5f5f5;">';
           linhasP+='<div style="display:flex;align-items:center;gap:6px;">';
           linhasP+='<div style="width:8px;height:8px;border-radius:50%;background:#DC2626;flex-shrink:0;"></div>';
