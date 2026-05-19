@@ -2042,12 +2042,12 @@ function mudarStatusRota(data,id,novoStatus){
     demandas=demandas.map(x=>x.id===parada.demandaId?{...x,status:statusDem}:x);
     salvarDemandas(empresaAtual,demandas);
 
-    // Se concluída, cria registro automático com dados completos da demanda
-    if(novoStatus==='Concluído'&&d){
+    // Se concluída, cria registro automático — só se não existir já
+    if(novoStatus==='Concluído'&&d&&!registros.find(function(r){return r.id===parada.id||(r.nomeCliente===d.titulo&&r.data===todayStr());})){
       const hoje=todayStr();
       const mes=MESES[new Date().getMonth()];
       const reg={
-        id:Date.now(),
+        id:parada.id,
         tipo:d.prazo||parada.tipo||'Entrega de Maquininha',
         nomeCliente:d.titulo||parada.cliente||'',
         local:d.local||parada.local||d.titulo,
@@ -2068,12 +2068,12 @@ function mudarStatusRota(data,id,novoStatus){
     }
   }
 
-  // Sem demanda vinculada — cria registro direto
-  if(novoStatus==='Concluído'&&!parada.demandaId){
+  // Sem demanda vinculada — cria registro direto, só se não existir
+  else if(novoStatus==='Concluído'&&!parada.demandaId&&!registros.find(function(r){return r.id===parada.id;})){
     const dataObj=new Date(data+'T12:00:00');
     const mes=MESES[dataObj.getMonth()];
     const reg={
-      id:Date.now(),
+      id:parada.id,
       tipo:parada.tipo||'Entrega de Maquininha',
       nomeCliente:parada.cliente||'',
       local:parada.local,
@@ -2386,7 +2386,7 @@ function acSelect(inputId, listId, valor){
       var descEl    = document.getElementById('d-desc');
       if(localEl && dem.local && !localEl.value)   localEl.value   = dem.local;
       if(endEl   && dem.endereco && !endEl.value)  endEl.value     = dem.endereco;
-      if(descEl  && dem.desc && !descEl.value)     descEl.value    = dem.desc;
+      // descrição nunca é preenchida automaticamente
     }
   }
 }
@@ -2580,6 +2580,8 @@ function toggleCorreios(){
 
 
 function selecionarAdquirente(nome){
+  // Toggle: se já está selecionado, desmarca
+  if(adquirenteSelecionado===nome){ limparAdquirente(); return; }
   adquirenteSelecionado=nome;
   const e=EMPRESAS[empresaAtual];
   ['ZOOP','PICPAY'].forEach(a=>{
