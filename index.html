@@ -2498,6 +2498,7 @@ let fixasExpandNP=false;
 let fixasExpandP=false;
 
 function selecionarSolicitante(nome){
+  if(solicitanteSelecionado===nome){ limparSolicitante(); return; }
   solicitanteSelecionado=nome;
   const e=EMPRESAS[empresaAtual];
   const ids={'LUCAS Suport':'sol-LUCAS','THAY Suport':'sol-THAY','PEDRO Suport':'sol-PEDRO',
@@ -2526,6 +2527,7 @@ function limparSolicitante(){
 let adquirenteSelecionado='';
 
 function selecionarModelo(nome){
+  if(document.getElementById('d-modelo').value===nome){ limparModelo(); return; }
   const e=EMPRESAS[empresaAtual];
   document.getElementById('d-modelo').value=nome;
   ['A910','ELGIN','P2','🦖'].forEach(m=>{
