@@ -559,11 +559,6 @@
         <option value="Todos">Todos os meses</option>
       </select>
     </div>
-    <!-- BOTÃO LIMPAR DUPLICATAS TEMPORÁRIO -->
-    <div style="margin-bottom:12px">
-      <button onclick="limparDuplicatasRegistros()" style="width:100%;padding:12px;border-radius:14px;border:none;background:linear-gradient(90deg,#3B82F6,#6D28D9);color:#fff;font-size:13px;font-weight:800;cursor:pointer;">🧹 Limpar Registros Duplicados</button>
-    </div>
-    <!-- FIM BOTÃO -->
     <div id="painel-stats" style="margin-bottom:12px"></div>
     <div id="painel-tipos" style="margin-bottom:12px"></div>
     <div class="card">
@@ -2079,7 +2074,7 @@ function renderDemandas(){
         </div>
       </div>
       <div class="demanda-detail ${open?'open':''}" style="background:${p.dot}08">
-        ${d.dataConclusao?`<div style="font-size:12px;color:#10B981;font-weight:700;margin:10px 14px 0;padding:8px 10px;background:#DCFCE7;border-radius:8px;">✅ Concluído em ${fmtData(d.dataConclusao)}</div>`:''}
+        ${d.dataConclusao?`<div style="font-size:12px;color:#10B981;font-weight:700;margin:10px 14px 0;padding:8px 10px;background:#DCFCE7;border-radius:8px;">✅ Concluído em ${fmtData(d.dataConclusao)}${d.turno?' · '+d.turno:''}</div>`:''}
         ${(d.solicitante||d.local)?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
           ${d.solicitante?`<div style="background:#fff;border-radius:8px;padding:5px 10px;font-size:12px;font-weight:600;border:1px solid rgba(0,0,0,0.08)">👤 ${d.solicitante}</div>`:''}
           ${d.local?`<div style="background:#fff;border-radius:8px;padding:5px 10px;font-size:12px;font-weight:600;border:1px solid rgba(0,0,0,0.08)">📍 ${d.local}</div>`:''}
@@ -2222,8 +2217,10 @@ function toggleDem(id){ detalheDemAberto=detalheDemAberto===id?null:id; renderDe
 
 function mudarStatus(id,status){
   const d=demandas.find(x=>x.id===id);
-  // DATA CONCLUSÃO TEMPORARIAMENTE DESATIVADA
-  demandas=demandas.map(x=>x.id===id?{...x,status}:x);
+  const _dataConcDem = status==='Concluída' ? todayStr() : null;
+  const _hora = new Date().getHours();
+  const _turno = status==='Concluída' ? (_hora>=7&&_hora<12?'🌅 Manhã':_hora>=12&&_hora<18?'☀️ Tarde':'🌙 Noite') : null;
+  demandas=demandas.map(x=>x.id===id?{...x,status,dataConclusao:_dataConcDem,turno:_turno}:x);
   salvarDemandas(empresaAtual,demandas);
 
   // Sync com rota do dia vinculada
@@ -4823,6 +4820,7 @@ function salvarGasolina(){
   const valor=parseCurrency('gas-valor');
   const preco=parseCurrency('gas-preco');
   if(isNaN(valor)||valor<=0){alert('Preencha o valor.');return;}
+  if(!gasTipoAtual){alert('Selecione Gasolina ou Etanol.');return;}
   const litros=(!isNaN(preco)&&preco>0)?(valor/preco):0;
   const cartaoId=document.getElementById('gas-cartao').value||null;
   const reg={id:Date.now(),data,mes:getMesDeData(data),valor,preco:isNaN(preco)?0:preco,litros:parseFloat(litros.toFixed(2)),tipo:gasTipoAtual,cartaoId:cartaoId?parseInt(cartaoId):null};
