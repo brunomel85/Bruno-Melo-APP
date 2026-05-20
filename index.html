@@ -1671,11 +1671,42 @@ function renderPainel(){
     const{bg,icon}=getCores(t);
     const count=counts[i];
     const pct=total>0?Math.round((count/total)*100):0;
-    return `<div style="display:flex;align-items:center;gap:9px;background:${bgCard};border-radius:10px;padding:8px 12px;">
-      <div style="width:10px;height:10px;border-radius:50%;background:${bg};flex-shrink:0"></div>
-      <div style="flex:1;font-size:12px;font-weight:600;color:#1A0A2E">${icon} ${t}</div>
-      <div style="font-size:14px;font-weight:800;color:${bg}">${count}</div>
-      <div style="font-size:11px;color:#aaa;min-width:28px;text-align:right">${pct}%</div>
+    const aberto=painelTipoAberto===t;
+    // Últimas 10 demandas daquele tipo ordenadas por dataCriacao desc
+    const demsTipo=getDemandas(empresaAtual)
+      .filter(d=>d.prazo===t||d.tipo===t)
+      .sort((a,b)=>(b.dataCriacao||'').localeCompare(a.dataCriacao||''))
+      .slice(0,10);
+    const corStatus=s=>s==='Concluída'?'#10B981':s==='Em andamento'?'#3B82F6':s==='Cancelada'?'#EF4444':'#F59E0B';
+    const bgStatus=s=>s==='Concluída'?'#D1FAE5':s==='Em andamento'?'#DBEAFE':s==='Cancelada'?'#FEE2E2':'#FFFBEB';
+    const labelStatus=s=>s==='Concluída'?'✅':s==='Em andamento'?'🔄':s==='Cancelada'?'❌':'⏳';
+    const cardsHTML=demsTipo.map(d=>{
+      const cor=corStatus(d.status);
+      const bgS=bgStatus(d.status);
+      const lbl=labelStatus(d.status);
+      return `<div onclick="event.stopPropagation();irParaDemanda(${d.id})" style="background:${bgS};border-radius:12px;border:1px solid ${cor}33;padding:10px 12px;margin-bottom:6px;cursor:pointer;active:opacity:0.8;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12px;font-weight:800;color:#1A0A2E;word-break:break-word">${d.titulo||'—'}</div>
+            <div style="font-size:10px;color:#aaa;margin-top:2px">${d.dataCriacao?'📅 '+fmtData(d.dataCriacao):''}${d.turno?' · '+d.turno:''}${d.responsavel?' · 👤 '+d.responsavel:''}</div>
+          </div>
+          <span style="font-size:10px;font-weight:700;color:${cor};background:${bgS};border:1px solid ${cor}55;padding:2px 7px;border-radius:20px;flex-shrink:0">${lbl} ${d.status}</span>
+        </div>
+      </div>`;
+    }).join('');
+    return `<div style="margin-bottom:4px;">
+      <div onclick="togglePainelTipo('${t}')" style="display:flex;align-items:center;gap:9px;background:${aberto?bg+'18':bgCard};border-radius:${aberto?'10px 10px 0 0':'10px'};padding:10px 12px;cursor:pointer;border:${aberto?'1.5px solid '+bg+'44':'1.5px solid transparent'};">
+        <div style="width:10px;height:10px;border-radius:50%;background:${bg};flex-shrink:0"></div>
+        <div style="flex:1;font-size:12px;font-weight:600;color:#1A0A2E">${icon} ${t}</div>
+        <div style="font-size:14px;font-weight:800;color:${bg}">${count}</div>
+        <div style="font-size:11px;color:#aaa;min-width:28px;text-align:right">${pct}%</div>
+        <span style="font-size:10px;color:${aberto?bg:'#aaa'};margin-left:4px">${aberto?'▲':'▼'}</span>
+      </div>
+      ${aberto&&demsTipo.length>0?`<div style="background:${bg}08;border:1.5px solid ${bg}33;border-top:none;border-radius:0 0 10px 10px;padding:10px 10px 4px;">
+        <div style="font-size:10px;font-weight:700;color:#aaa;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">Últimas ${demsTipo.length} demandas · toque para abrir</div>
+        ${cardsHTML}
+      </div>`:''}
+      ${aberto&&demsTipo.length===0?`<div style="background:${bg}08;border:1.5px solid ${bg}33;border-top:none;border-radius:0 0 10px 10px;padding:14px;text-align:center;font-size:12px;color:#aaa;">Nenhuma demanda deste tipo</div>`:''}
     </div>`;
   }).join('');
   document.getElementById('painel-stats').innerHTML=`
@@ -2032,7 +2063,7 @@ function renderDemandas(){
     const demBg=d.status==='Concluída'?'#DCFCE7':d.status==='Cancelada'?'#FEE2E2':d.status==='Em andamento'?'#DBEAFE':d.status==='Pendente'?'#FEF9C3':'#fff';
     const demTextColor=d.status==='Concluída'?'#166534':d.status==='Cancelada'?'#991B1B':d.status==='Em andamento'?'#1E40AF':d.status==='Pendente'?'#92400E':'#1A1A2E';
     const demBorderWidth=(d.status==='Concluída'||d.status==='Cancelada')?'2px':'1px';
-    return `<div class="demanda-card" id="dem-card-${d.id}" style="border-color:${demBorderColor};border-width:${demBorderWidth};border-left:4px solid ${demBorderColor};background:${demBg};opacity:${concluida?0.85:1}" onclick="toggleDem(${d.id})">
+    return `<div class="demanda-card" id="dem-card-${d.id}" style="border-color:${demBorderColor};border-width:${demBorderWidth};border-left:4px solid ${demBorderColor};background:${demBg};opacity:${concluida?0.85:1}" id="dem-${d.id}" onclick="toggleDem(${d.id})">
       <div class="demanda-header">
         <div class="prioridade-dot" style="background:${p.dot}"></div>
         <div class="demanda-info">
@@ -2834,10 +2865,29 @@ let rotaItemAberto=null;
 let filtroPeriodoDem='todas';
 let fixasExpandNP=false;
 let fixasExpandP=false;
+let painelTipoAberto=null;
 function toggleCartao(id){ cartaoAberto=cartaoAberto===id?null:id; renderCartoes(); }
 function toggleRotaItem(id){ rotaItemAberto=(rotaItemAberto===id)?null:id; renderRota(); }
 function setGraficoAno(id,ano){ cartaoGraficoAno[id]=parseInt(ano); renderCartoes(); }
 function toggleGraficoCartao(id){ cartaoGraficoAberto=(cartaoGraficoAberto===id)?null:id; if(!cartaoGraficoAno[id])cartaoGraficoAno[id]=new Date().getFullYear(); renderCartoes(); }
+function irParaDemanda(demId){
+  navTo('demandas');
+  setTimeout(function(){
+    detalheDemAberto=demId;
+    renderDemandas();
+    // Scroll para a demanda
+    setTimeout(function(){
+      var el=document.getElementById('dem-'+demId);
+      if(el) el.scrollIntoView({behavior:'smooth',block:'center'});
+    },200);
+  },150);
+}
+
+function togglePainelTipo(tipo){
+  painelTipoAberto=(painelTipoAberto===tipo)?null:tipo;
+  renderPainel();
+}
+
 function setFiltroPeriodoDem(periodo){
   filtroPeriodoDem=periodo;
   var e=EMPRESAS[empresaAtual];
