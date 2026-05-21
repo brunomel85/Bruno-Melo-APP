@@ -2871,16 +2871,15 @@ function toggleRotaItem(id){ rotaItemAberto=(rotaItemAberto===id)?null:id; rende
 function setGraficoAno(id,ano){ cartaoGraficoAno[id]=parseInt(ano); renderCartoes(); }
 function toggleGraficoCartao(id){ cartaoGraficoAberto=(cartaoGraficoAberto===id)?null:id; if(!cartaoGraficoAno[id])cartaoGraficoAno[id]=new Date().getFullYear(); renderCartoes(); }
 function irParaDemanda(demId){
+  detalheDemAberto=demId;
   navTo('demandas');
   setTimeout(function(){
-    detalheDemAberto=demId;
     renderDemandas();
-    // Scroll para a demanda
     setTimeout(function(){
       var el=document.getElementById('dem-'+demId);
       if(el) el.scrollIntoView({behavior:'smooth',block:'center'});
-    },200);
-  },150);
+    },300);
+  },250);
 }
 
 function togglePainelTipo(tipo){
