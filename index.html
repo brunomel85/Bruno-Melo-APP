@@ -2063,7 +2063,7 @@ function renderDemandas(){
     const demBg=d.status==='Concluída'?'#DCFCE7':d.status==='Cancelada'?'#FEE2E2':d.status==='Em andamento'?'#DBEAFE':d.status==='Pendente'?'#FEF9C3':'#fff';
     const demTextColor=d.status==='Concluída'?'#166534':d.status==='Cancelada'?'#991B1B':d.status==='Em andamento'?'#1E40AF':d.status==='Pendente'?'#92400E':'#1A1A2E';
     const demBorderWidth=(d.status==='Concluída'||d.status==='Cancelada')?'2px':'1px';
-    return `<div class="demanda-card" id="dem-card-${d.id}" style="border-color:${demBorderColor};border-width:${demBorderWidth};border-left:4px solid ${demBorderColor};background:${demBg};opacity:${concluida?0.85:1}" id="dem-${d.id}" onclick="toggleDem(${d.id})">
+    return `<div class="demanda-card" id="dem-${d.id}" style="border-color:${demBorderColor};border-width:${demBorderWidth};border-left:4px solid ${demBorderColor};background:${demBg};opacity:${concluida?0.85:1}" onclick="toggleDem(${d.id})">
       <div class="demanda-header">
         <div class="prioridade-dot" style="background:${p.dot}"></div>
         <div class="demanda-info">
@@ -2871,15 +2871,23 @@ function toggleRotaItem(id){ rotaItemAberto=(rotaItemAberto===id)?null:id; rende
 function setGraficoAno(id,ano){ cartaoGraficoAno[id]=parseInt(ano); renderCartoes(); }
 function toggleGraficoCartao(id){ cartaoGraficoAberto=(cartaoGraficoAberto===id)?null:id; if(!cartaoGraficoAno[id])cartaoGraficoAno[id]=new Date().getFullYear(); renderCartoes(); }
 function irParaDemanda(demId){
+  // Garantir que filtro de período seja "todas" para a demanda aparecer
+  filtroPeriodoDem='todas';
   detalheDemAberto=demId;
+  // Navegar para demandas
   navTo('demandas');
+  // Aguardar renderização e expandir
   setTimeout(function(){
+    // Forçar re-render com detalhe aberto
+    detalheDemAberto=demId;
     renderDemandas();
     setTimeout(function(){
       var el=document.getElementById('dem-'+demId);
-      if(el) el.scrollIntoView({behavior:'smooth',block:'center'});
-    },300);
-  },250);
+      if(el){
+        el.scrollIntoView({behavior:'smooth',block:'center'});
+      }
+    },400);
+  },350);
 }
 
 function togglePainelTipo(tipo){
