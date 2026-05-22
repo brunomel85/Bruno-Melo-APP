@@ -1840,6 +1840,21 @@ function renderPainel(){
   if(respsArr2.length>0){
   }
 
+  // Top clientes frequentes (só OPAY)
+  if(empresaAtual===1){
+    const todasDems2=getDemandas(empresaAtual)||[];
+    const clientesMap={};
+    todasDems2.forEach(function(d){
+      var t=(d.titulo||d.local||'—').trim();
+      if(!clientesMap[t])clientesMap[t]=0;
+      clientesMap[t]++;
+    });
+    const clientesArr=Object.keys(clientesMap).map(function(t){return{nome:t,total:clientesMap[t]};}).sort(function(a,b){return b.total-a.total;});
+    const elResp=document.getElementById('painel-responsaveis');
+    if(elResp&&clientesArr.length>0) renderClientesBlock(elResp,clientesArr,0);
+    else if(elResp) elResp.innerHTML='';
+  }
+
   const recentes=[...registros].sort((a,b)=>b.id-a.id).slice(0,5);
   document.getElementById('painel-recentes').innerHTML=recentes.length===0
     ?'<div style="padding:20px;text-align:center;opacity:0.45;font-size:13px">Nenhum registro ainda.</div>'
