@@ -617,6 +617,7 @@
     </div>
     <div id="painel-stats" style="margin-bottom:12px"></div>
     <div id="painel-tipos" style="margin-bottom:12px"></div>
+    <div id="painel-responsaveis" style="background:#fff;border-radius:16px;padding:16px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,0.06);"></div>
     <div class="card">
       <div class="section-header">
         <span class="section-title">Últimos Registros</span>
@@ -641,6 +642,10 @@
 
     <!-- Form adicionar parada -->
     <div id="lista-rota"></div>
+    <div id="historico-rotas-wrap" style="margin-top:18px;">
+      <div style="font-size:11px;font-weight:700;color:#aaa;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;">📅 Rotas Anteriores</div>
+      <div id="historico-rotas"></div>
+    </div>
   </div>
 
   <!-- ===== DEMANDAS ===== -->
@@ -658,6 +663,7 @@
       </select>
     </div>
 
+    <div id="dem-resp-ctrl" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:10px;scrollbar-width:none;"></div>
     <div style="display:flex;background:#f5f5f5;border-radius:12px;padding:3px;gap:2px;margin-bottom:10px;">
       <button id="dem-btn-semana" onclick="setFiltroPeriodoDem('semana')" style="flex:1;padding:8px 0;border-radius:10px;border:none;background:#fff;color:#F97316;font-size:12px;font-weight:800;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.1);">Semana</button>
       <button id="dem-btn-mes" onclick="setFiltroPeriodoDem('mes')" style="flex:1;padding:8px 0;border-radius:10px;border:none;background:transparent;color:#aaa;font-size:12px;font-weight:600;cursor:pointer;">Mês</button>
@@ -1819,6 +1825,34 @@ function renderPainel(){
       </div>
     </div>
   </div>`;
+  // Contador por responsável
+  const todasDems2=getDemandas(empresaAtual)||[];
+  const respsMap2={};
+  todasDems2.forEach(function(d){
+    var r=d.responsavel||'Outros';
+    if(!r||r.trim()==='')r='Outros';
+    if(!respsMap2[r]) respsMap2[r]=0;
+    respsMap2[r]++;
+  });
+  const respsArr2=Object.keys(respsMap2).map(function(r){return{nome:r,total:respsMap2[r]};}).sort(function(a,b){return b.total-a.total;}).slice(0,6);
+  const totalDemsResp2=respsArr2.reduce(function(a,r){return a+r.total;},0)||1;
+  const cores2=['#10B981','#F97316','#3B82F6','#8B5CF6','#EF4444','#F59E0B'];
+  if(respsArr2.length>0){
+    const respHTML2=respsArr2.map(function(r,i){
+      const pct=Math.round(r.total/totalDemsResp2*100);
+      return '<div style="margin-bottom:8px;">'
+        +'<div style="display:flex;justify-content:space-between;margin-bottom:3px;">'
+        +'<span style="font-size:12px;font-weight:700;color:#1A0A2E;">👤 '+r.nome.split(' ')[0]+'</span>'
+        +'<span style="font-size:12px;font-weight:800;color:'+cores2[i%6]+';">'+r.total+' <span style="color:#aaa;font-weight:400;font-size:11px;">· '+pct+'%</span></span>'
+        +'</div>'
+        +'<div style="height:6px;background:#f0f0f0;border-radius:10px;">'
+        +'<div style="height:6px;background:'+cores2[i%6]+';border-radius:10px;width:'+pct+'%;"></div>'
+        +'</div></div>';
+    }).join('');
+    const elResp=document.getElementById('painel-responsaveis');
+    if(elResp) elResp.innerHTML='<div style="font-size:11px;font-weight:700;color:#aaa;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;">Por Responsável</div>'+respHTML2;
+  }
+
   const recentes=[...registros].sort((a,b)=>b.id-a.id).slice(0,5);
   document.getElementById('painel-recentes').innerHTML=recentes.length===0
     ?'<div style="padding:20px;text-align:center;opacity:0.45;font-size:13px">Nenhum registro ainda.</div>'
@@ -1966,6 +2000,7 @@ function renderRota(){
       <div class="rota-actions"><button class="rota-del" onclick="event.stopPropagation();excluirParada('${sel}',${p.id})">🗑️</button></div>
     </div>`;
   }).join('');
+  renderHistoricoRotas();
 }
 
 function salvarParada(){ /* formulário removido - paradas vêm das demandas */ }
@@ -2095,6 +2130,7 @@ function renderDemandas(){
   const fimMes=new Date(dataFiltroObj.getFullYear(),dataFiltroObj.getMonth()+1,0,23,59,59);
   const lista=(filtro==='Todos'?demandas:demandas.filter(d=>d.status===filtro)).filter(d=>{
     if(filtroPeriodoDem!=='todas'){const dc=d.dataCriacao?new Date(d.dataCriacao+'T12:00:00'):null;if(!dc)return false;if(filtroPeriodoDem==='semana'&&(dc<inicioSemana||dc>fimSemana))return false;if(filtroPeriodoDem==='mes'&&(dc<inicioMes||dc>fimMes))return false;}
+    if(filtroResponsavelDem&&(d.responsavel||'')!==filtroResponsavelDem)return false;
     if(!busca)return true;
     return (d.titulo||'').toLowerCase().includes(busca)||(d.local||'').toLowerCase().includes(busca)||(d.solicitante||'').toLowerCase().includes(busca)||(d.responsavel||'').toLowerCase().includes(busca)||(d.correiosCliente||'').toLowerCase().includes(busca)||(d.desc||'').toLowerCase().includes(busca)||(d.endereco||'').toLowerCase().includes(busca);
   });
@@ -2918,12 +2954,86 @@ let cartaoMesFiltro={};
 let cartaoGraficoAberto=null;
 let cartaoGraficoAno={};
 let rotaItemAberto=null;
+let rotaResumoVisivel=false;
 let filtroPeriodoDem='todas';
+let filtroResponsavelDem='';
 let fixasExpandNP=false;
 let fixasExpandP=false;
 let painelTipoAberto=null;
 function toggleCartao(id){ cartaoAberto=cartaoAberto===id?null:id; renderCartoes(); }
+function verificarRotaConcluida(sel, data, paradas){
+  if(!paradas||paradas.length===0) return;
+  var todas=paradas.every(function(p){return p.status==='Concluído'||p.status==='Cancelado';});
+  if(!todas) return;
+  // Calcular resumo
+  var entregas=paradas.filter(function(p){return p.tipo&&p.tipo.toLowerCase().includes('maquininha')&&p.status==='Concluído';}).length;
+  var bobinas=paradas.filter(function(p){return p.status==='Concluído';}).reduce(function(a,p){return a+(parseInt(p.qtdBobinas)||0);},0);
+  var trocas=paradas.filter(function(p){return p.tipo&&p.tipo.toLowerCase().includes('troca')&&p.status==='Concluído';}).length;
+  var cancelados=paradas.filter(function(p){return p.status==='Cancelado';}).length;
+  var total=paradas.length;
+  // Mostrar resumo
+  var dias=['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
+  var dataObj=new Date(data+'T12:00:00');
+  var diaSemana=dias[dataObj.getDay()];
+  var html='<div id="rota-resumo-card" style="background:#F0FDF4;border:1.5px solid #10B981;border-radius:14px;padding:14px;margin-bottom:12px;">';
+  html+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">';
+  html+='<span style="font-size:24px;">✅</span>';
+  html+='<div><div style="font-weight:800;font-size:14px;color:#065F46;">Rota do dia concluída!</div>';
+  html+='<div style="font-size:11px;color:#aaa;">'+diaSemana+' · '+fmtData(data)+' · '+total+' paradas</div></div>';  html+='<button onclick="var el=document.getElementById(&quot;rota-resumo-card&quot;);if(el)el.remove();" style="margin-left:auto;background:none;border:none;font-size:18px;cursor:pointer;color:#aaa;">✕</button>';
+  html+='</div>';
+  html+='<div style="display:flex;gap:6px;flex-wrap:wrap;">';
+  if(entregas>0) html+='<span style="background:#D1FAE5;color:#065F46;border-radius:20px;padding:5px 12px;font-size:12px;font-weight:700;">📦 '+entregas+' entregas</span>';
+  if(bobinas>0) html+='<span style="background:#FED7AA;color:#9A3412;border-radius:20px;padding:5px 12px;font-size:12px;font-weight:700;">🧻 '+bobinas+' bobinas</span>';
+  if(trocas>0) html+='<span style="background:#DBEAFE;color:#1E40AF;border-radius:20px;padding:5px 12px;font-size:12px;font-weight:700;">🔄 '+trocas+' trocas</span>';
+  if(cancelados>0) html+='<span style="background:#FEE2E2;color:#991B1B;border-radius:20px;padding:5px 12px;font-size:12px;font-weight:700;">❌ '+cancelados+' cancelados</span>';
+  html+='</div></div>';
+  // Inserir no topo da rota
+  var lista=document.getElementById('lista-rota');
+  if(lista){
+    var existing=document.getElementById('rota-resumo-card');
+    if(existing) existing.remove();
+    lista.insertAdjacentHTML('afterbegin',html);
+  }
+}
+
 function toggleRotaItem(id){ rotaItemAberto=(rotaItemAberto===id)?null:id; renderRota(); }
+
+function renderHistoricoRotas(){
+  var el=document.getElementById('historico-rotas');
+  if(!el) return;
+  // Buscar datas com rota salva (últimos 30 dias)
+  var hoje=new Date();
+  var datas=[];
+  for(var i=1;i<=30;i++){
+    var d=new Date(hoje);
+    d.setDate(hoje.getDate()-i);
+    var ds=d.toISOString().slice(0,10);
+    var paradas=getRota(empresaAtual,ds)||[];
+    if(paradas.length>0){
+      var conc=paradas.filter(function(p){return p.status==='Concluído';}).length;
+      var dias=['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+      datas.push({data:ds,total:paradas.length,concluidas:conc,diaSemana:dias[d.getDay()]});
+    }
+  }
+  if(datas.length===0){el.innerHTML='<div style="text-align:center;color:#aaa;font-size:12px;padding:12px;">Nenhuma rota anterior</div>';return;}
+  el.innerHTML=datas.slice(0,7).map(function(r){
+    var todas=r.concluidas===r.total;
+    var bg=todas?'#F0FDF4':'#FFF7ED';
+    var border=todas?'#10B981':'#F97316';
+    var cor=todas?'#10B981':'#F97316';
+    var emoji=todas?'✅':'🗺️';
+    return '<div onclick="carregarRotaHistorico(\"'+r.data+'\")" style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:'+bg+';border-radius:12px;border:1.5px solid '+border+'33;cursor:pointer;margin-bottom:6px;">'
+      +'<div style="width:36px;height:36px;background:'+cor+';border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">'+emoji+'</div>'
+      +'<div style="flex:1;"><div style="font-weight:700;font-size:13px;color:#1A0A2E;">'+r.diaSemana+' · '+fmtData(r.data)+'</div>'
+      +'<div style="font-size:11px;color:#aaa;">'+r.total+' paradas · '+r.concluidas+' concluídas</div></div>'
+      +'<span style="font-size:11px;color:#aaa;">▶</span></div>';
+  }).join('');
+}
+
+function carregarRotaHistorico(data){
+  var input=document.getElementById('rota-data');
+  if(input){input.value=data;renderRota();}
+}
 function setGraficoAno(id,ano){ cartaoGraficoAno[id]=parseInt(ano); renderCartoes(); }
 function toggleGraficoCartao(id){ cartaoGraficoAberto=(cartaoGraficoAberto===id)?null:id; if(!cartaoGraficoAno[id])cartaoGraficoAno[id]=new Date().getFullYear(); renderCartoes(); }
 function irParaDemanda(demId){
@@ -2949,6 +3059,26 @@ function irParaDemanda(demId){
 function togglePainelTipo(tipo){
   painelTipoAberto=(painelTipoAberto===tipo)?null:tipo;
   renderPainel();
+}
+
+function setFiltroResponsavelDem(resp){
+  filtroResponsavelDem=(filtroResponsavelDem===resp)?'':resp;
+  renderFiltroResponsavelDem();
+  renderDemandas();
+}
+
+function renderFiltroResponsavelDem(){
+  var el=document.getElementById('dem-resp-ctrl');
+  if(!el) return;
+  var e=EMPRESAS[empresaAtual];
+  var dems=getDemandas(empresaAtual)||[];
+  var resps=[''];
+  dems.forEach(function(d){if(d.responsavel&&!resps.includes(d.responsavel))resps.push(d.responsavel);});
+  el.innerHTML=resps.map(function(r){
+    var ativo=filtroResponsavelDem===r;
+    var label=r===''?'👥 Todos':'👤 '+r.split(' ')[0];
+    return '<button onclick="setFiltroResponsavelDem(\"'+r+'\")" style="flex-shrink:0;padding:6px 14px;border-radius:20px;border:none;background:'+(ativo?e.primary:'#f0f0f0')+';color:'+(ativo?'#fff':'#aaa')+';font-size:11px;font-weight:'+(ativo?'800':'700')+';cursor:pointer;white-space:nowrap;">'+label+'</button>';
+  }).join('');
 }
 
 function setFiltroPeriodoDem(periodo){
