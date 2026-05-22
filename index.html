@@ -508,6 +508,62 @@
   </div>
 
   <!-- ROLAGEM -->
+  <div id="page-df-contas" class="page" style="padding:0 23px">
+    <div class="top-bar">
+      <div><h1>🏦 Contas</h1><div class="subtitle" style="margin-bottom:0">Saldos das suas contas</div></div>
+      <button onclick="toggleContaForm()" id="btn-nova-conta" class="btn-primary" style="font-size:12px;padding:8px 14px">➕ Nova Conta</button>
+    </div>
+
+    <!-- Form -->
+    <div id="conta-form-card" class="card" style="display:none;margin-bottom:14px;padding:18px">
+      <div style="font-size:10px;font-weight:700;color:#aaa;margin-bottom:8px">COR DA CONTA</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px" id="conta-cores">
+        <div onclick="selecionarCorConta('#8A05BE')" class="cor-opt" style="width:28px;height:28px;border-radius:50%;background:#8A05BE;cursor:pointer;border:3px solid transparent"></div>
+        <div onclick="selecionarCorConta('#FF6B00')" class="cor-opt" style="width:28px;height:28px;border-radius:50%;background:#FF6B00;cursor:pointer;border:3px solid transparent"></div>
+        <div onclick="selecionarCorConta('#00C896')" class="cor-opt" style="width:28px;height:28px;border-radius:50%;background:#00C896;cursor:pointer;border:3px solid transparent"></div>
+        <div onclick="selecionarCorConta('#3B82F6')" class="cor-opt" style="width:28px;height:28px;border-radius:50%;background:#3B82F6;cursor:pointer;border:3px solid transparent"></div>
+        <div onclick="selecionarCorConta('#EF4444')" class="cor-opt" style="width:28px;height:28px;border-radius:50%;background:#EF4444;cursor:pointer;border:3px solid transparent"></div>
+        <div onclick="selecionarCorConta('#F59E0B')" class="cor-opt" style="width:28px;height:28px;border-radius:50%;background:#F59E0B;cursor:pointer;border:3px solid transparent"></div>
+        <div onclick="selecionarCorConta('#10B981')" class="cor-opt" style="width:28px;height:28px;border-radius:50%;background:#10B981;cursor:pointer;border:3px solid transparent"></div>
+        <div onclick="selecionarCorConta('#EC4899')" class="cor-opt" style="width:28px;height:28px;border-radius:50%;background:#EC4899;cursor:pointer;border:3px solid transparent"></div>
+        <div onclick="selecionarCorConta('#1A1A2E')" class="cor-opt" style="width:28px;height:28px;border-radius:50%;background:#1A1A2E;cursor:pointer;border:3px solid transparent"></div>
+        <div onclick="selecionarCorConta('#6366F1')" class="cor-opt" style="width:28px;height:28px;border-radius:50%;background:#6366F1;cursor:pointer;border:3px solid transparent"></div>
+      </div>
+      <div class="grid-2" style="margin-bottom:12px">
+        <div><label class="form-label">NOME DA CONTA</label><input class="form-input" id="conta-nome" placeholder="Ex: Nubank"/></div>
+        <div><label class="form-label">SALDO ATUAL (R$)</label><input class="form-input" type="number" id="conta-saldo" placeholder="0,00"/></div>
+      </div>
+      <div style="margin-bottom:14px">
+        <label class="form-label">ATUALIZAR A CADA</label>
+        <select class="form-input" id="conta-intervalo">
+          <option value="3">3 dias</option>
+          <option value="5">5 dias</option>
+          <option value="7">7 dias</option>
+          <option value="15">15 dias</option>
+          <option value="30">30 dias</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn-primary" onclick="salvarConta()" style="flex:1">✅ Salvar</button>
+        <button onclick="toggleContaForm()" style="flex:1;padding:12px;border-radius:12px;border:1.5px solid #aaa;background:#fff;color:#888;font-size:13px;font-weight:700;cursor:pointer">✖️ Cancelar</button>
+      </div>
+    </div>
+
+    <!-- Total -->
+    <div id="contas-total-card"></div>
+    <!-- Lista -->
+    <div id="lista-contas"></div>
+  </div>
+
+  <!-- MILAGRE -->
+  <div id="page-df-milagre" class="page">
+    <div class="top-bar">
+      <div><h1>🙏 Milagre</h1><div class="subtitle" style="margin-bottom:0">Tudo em aberto de uma vez</div></div>
+    </div>
+    <div id="milagre-card"></div>
+  </div>
+
+  <!-- ===== DE FELIPPE: GASOLINA ===== -->
   <div id="page-df-gasolina" class="page">
     <div class="top-bar">
       <div><h1>⛽️ Gasolina</h1><div class="subtitle" style="margin-bottom:0">Controle de abastecimentos</div></div>
