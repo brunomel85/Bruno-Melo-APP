@@ -3172,9 +3172,15 @@ function renderClientesBlock(el, lista, offset){
 
   if(temMais){
     var resto=lista.length-(offset+PAGE);
-    html+='<button onclick="window._clientesOffset=(window._clientesOffset||0)+5;renderClientesBlock(document.getElementById(\"painel-responsaveis\"),window._clientesArr,window._clientesOffset);" style="width:100%;margin-top:8px;padding:10px;border-radius:10px;border:1.5px solid #f0f0f0;background:#fafafa;color:#aaa;font-size:12px;font-weight:700;cursor:pointer;">Ver mais '+resto+' →</button>';
+    html+='<button onclick="verMaisClientes()" style="width:100%;margin-top:8px;padding:10px;border-radius:10px;border:1.5px solid #F97316;background:#FFF7ED;color:#F97316;font-size:12px;font-weight:700;cursor:pointer;">Ver mais '+resto+' →</button>';
   }
   el.innerHTML=html;
+}
+
+function verMaisClientes(){
+  window._clientesOffset=(window._clientesOffset||0)+5;
+  var el=document.getElementById('painel-responsaveis');
+  renderClientesBlock(el, window._clientesArr, window._clientesOffset);
 }
 
 function toggleClienteExpand(nome){
