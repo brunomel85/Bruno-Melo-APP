@@ -3125,6 +3125,28 @@ function limparDuplicatasRegistros(){
   if(document.getElementById('lista-registros')) renderRegistros();
 }
 
+function renderClientesBlock(el, lista, offset){
+  var PAGE=5;
+  var slice=lista.slice(0, offset+PAGE);
+  var temMais=lista.length > offset+PAGE;
+  var html='<div style="font-size:11px;font-weight:700;color:#aaa;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;">🏢 Clientes Frequentes</div>';
+  html+='<div id="clientes-lista">';
+  slice.forEach(function(c,i){
+    var cor=i===0?'#F97316':i===1?'#10B981':i===2?'#3B82F6':'#6B7280';
+    html+='<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f5f5f5;">';
+    html+='<span style="font-family:Space Grotesk,sans-serif;font-size:13px;font-weight:900;color:'+cor+';width:20px;text-align:center;">'+(i+1)+'</span>';
+    html+='<div style="flex:1;font-size:12px;font-weight:700;color:#1A0A2E;word-break:break-word;">'+c.nome+'</div>';
+    html+='<span style="font-family:Space Grotesk,sans-serif;font-size:14px;font-weight:900;color:'+cor+';">'+c.total+'x</span>';
+    html+='</div>';
+  });
+  html+='</div>';
+  if(temMais){
+    html+='<button onclick="renderClientesBlock(document.getElementById(\"painel-responsaveis\"),window._clientesArr,'+(offset+PAGE)+')" style="width:100%;margin-top:10px;padding:9px;border-radius:10px;border:1.5px solid #f0f0f0;background:#fafafa;color:#aaa;font-size:12px;font-weight:700;cursor:pointer;">Ver mais '+(lista.length-(offset+PAGE))+' →</button>';
+  }
+  window._clientesArr=lista;
+  el.innerHTML=html;
+}
+
 function migrarRegistros(){
   for(var emp=0;emp<3;emp++){var regs=ls('log_reg_'+emp,[])||[];var dems=ls('log_dem_'+emp,[])||[];var alterou=false;regs.forEach(function(r){if(r.nomeCliente)return;var dem=dems.find(function(d){return d.titulo&&(r.local===d.titulo||r.local===(d.local||'')||(d.local&&r.local&&r.local.toLowerCase()===d.local.toLowerCase()));});if(dem){r.nomeCliente=dem.titulo;alterou=true;}else if(r.local&&r.local!==r.tipo){r.nomeCliente=r.local;alterou=true;}});if(alterou)lsSet('log_reg_'+emp,regs);}
 }
