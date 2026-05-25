@@ -2971,7 +2971,6 @@ let filtroResponsavelDem='';
 let fixasExpandNP=false;
 let fixasExpandP=false;
 let mesComparativo='';
-let mesAtualComp='';
 let anoComparativo=new Date().getFullYear();
 let anoAtualComp=new Date().getFullYear();
 let painelTipoAberto=null;
@@ -3284,45 +3283,36 @@ function renderGraficoComparativo(){
   var el=document.getElementById('df-grafico-comp');
   if(!el) return;
 
-  // Inicializar valores padrão
-  var hoje=new Date();
-  if(!mesAtualComp) mesAtualComp=MESES[hoje.getMonth()];
-  if(!mesComparativo) mesComparativo=MESES[(MESES.indexOf(mesAtualComp)-1+12)%12];
-  if(!anoAtualComp) anoAtualComp=hoje.getFullYear();
-  if(!anoComparativo) anoComparativo=hoje.getFullYear();
+  // Mês atual baseado no select do painel
+  var mesSel2=document.getElementById('df-mes-select');
+  var mesAtual=(mesSel2&&mesSel2.value&&mesSel2.value!=='Todos')?mesSel2.value:MESES[new Date().getMonth()];
+  if(!mesComparativo) mesComparativo=MESES[(MESES.indexOf(mesAtual)-1+12)%12];
+  if(!anoComparativo) anoComparativo=new Date().getFullYear();
+  if(!anoAtualComp) anoAtualComp=new Date().getFullYear();
 
   var cartoes=getCartoes();
   var compras=getCompras();
   if(cartoes.length===0){el.innerHTML='';return;}
 
-  // Anos disponíveis
-  var anosSet={};
-  anosSet[hoje.getFullYear()]=1;
-  anosSet[hoje.getFullYear()+1]=1;
-  compras.forEach(function(p){
-    p.parcelas.forEach(function(x){if(x.ano)anosSet[x.ano]=1;});
-  });
-  var anos=Object.keys(anosSet).map(Number).sort();
-
-  // Calcular gasto por cartão/mês/ano
-  function gastoMesAno(cartaoId,mes,ano){
+  // Gasto de um cartão num mês+ano específico
+  function gastoMesAno(cartaoId, mes, ano){
     return compras.filter(function(p){return p.cartaoId===cartaoId;}).reduce(function(tot,p){
       return tot+p.parcelas.filter(function(x){
-        // Se tem ano salvo, usar diretamente
-        if(x.ano) return x.mes===mes && x.ano===ano;
-        // Sem ano: assumir que pertence ao ano da compra ou ao corrente
-        var anoRef=hoje.getFullYear();
-        if(p.dataCompra){
-          try{ anoRef=new Date(p.dataCompra+'T12:00:00').getFullYear(); }catch(e){}
-        }
-        return x.mes===mes && anoRef===ano;
-      }).reduce(function(b,x){return b+(x.valor||0);},0);
+        return x.mes===mes && (x.ano?x.ano===ano:ano===new Date().getFullYear());
+      }).reduce(function(b,x){return b+x.valor;},0);
     },0);
   }
 
+  // Anos disponíveis nas compras
+  var anosSet={};
+  anosSet[new Date().getFullYear()]=1;
+  anosSet[new Date().getFullYear()+1]=1;
+  compras.forEach(function(p){p.parcelas.forEach(function(x){if(x.ano)anosSet[x.ano]=1;});});
+  var anos=Object.keys(anosSet).map(Number).sort();
+
   var dados=cartoes.map(function(c){
     return{nome:c.nome,cor:c.cor,
-      atual:gastoMesAno(c.id,mesAtualComp,anoAtualComp),
+      atual:gastoMesAno(c.id,mesAtual,anoAtualComp),
       comp:gastoMesAno(c.id,mesComparativo,anoComparativo)
     };
   }).filter(function(d){return d.atual>0||d.comp>0;});
@@ -3330,41 +3320,43 @@ function renderGraficoComparativo(){
   var totalAtual=dados.reduce(function(a,d){return a+d.atual;},0);
   var totalComp=dados.reduce(function(a,d){return a+d.comp;},0);
   var diffTotal=totalComp>0?Math.round((totalAtual-totalComp)/totalComp*100):0;
-  var corDiff=diffTotal>=0?'#EF4444':'#10B981';
+  var corDiff=diffTotal>0?'#EF4444':'#10B981';
+  var bgDiff=diffTotal>0?'#FEE2E2':'#D1FAE5';
   var setaTotal=diffTotal>=0?'↑':'↓';
 
-  function opsMes(sel){return MESES.map(function(m){return '<option value="'+m+'"'+(m===sel?' selected':'')+'>'+m+'</option>';}).join('');}
-  function opsAno(sel){return anos.map(function(a){return '<option value="'+a+'"'+(a===sel?' selected':'')+'>'+a+'</option>';}).join('');}
+  // Opções dos seletores
+  function opsMes(selMes){return MESES.map(function(m){return '<option value="'+m+'"'+(m===selMes?' selected':'')+'>'+m+'</option>';}).join('');}
+  function opsAno(selAno){return anos.map(function(a){return '<option value="'+a+'"'+(a===selAno?' selected':'')+'>'+a+'</option>';}).join('');}
 
-  var listaHTML=dados.length===0
-    ?'<div style="text-align:center;color:#aaa;font-size:12px;padding:12px;">Sem dados para comparar</div>'
-    :dados.map(function(d){
-      var diff=d.comp>0?Math.round((d.atual-d.comp)/d.comp*100):null;
-      var cor=diff!==null?(diff>=0?'#EF4444':'#10B981'):'#aaa';
-      var bg=diff!==null?(diff>=0?'#FEE2E2':'#D1FAE5'):'#f5f5f5';
-      var seta=diff!==null?(diff>=0?'↑':'↓'):'';
-      return '<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #f5f5f5;">'
-        +'<div style="width:8px;height:8px;border-radius:50%;background:'+d.cor+';flex-shrink:0;"></div>'
-        +'<div style="flex:1;font-size:12px;font-weight:700;color:#1A0A2E;">'+d.nome+'</div>'
-        +'<div style="font-size:11px;font-weight:800;color:#1A0A2E;">'+fmtReal(d.atual)+'</div>'
-        +(diff!==null?'<span style="font-size:10px;font-weight:800;color:'+cor+';background:'+bg+';padding:2px 6px;border-radius:20px;">'+seta+Math.abs(diff)+'%</span>':'<span style="font-size:10px;color:#aaa;">novo</span>')
-        +'</div>';
-    }).join('');
+  // Lista cartões
+  var listaHTML=dados.map(function(d){
+    var diff=d.comp>0?Math.round((d.atual-d.comp)/d.comp*100):0;
+    var cor=diff>=0?'#EF4444':'#10B981';
+    var bg=diff>=0?'#FEE2E2':'#D1FAE5';
+    var seta=diff>=0?'↑':'↓';
+    return '<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #f5f5f5;">'
+      +'<div style="width:8px;height:8px;border-radius:50%;background:'+d.cor+';flex-shrink:0;"></div>'
+      +'<div style="flex:1;font-size:12px;font-weight:700;color:#1A0A2E;">'+d.nome+'</div>'
+      +'<div style="font-size:11px;font-weight:800;color:#1A0A2E;">'+fmtReal(d.atual)+'</div>'
+      +(d.comp>0?'<span style="font-size:10px;font-weight:800;color:'+cor+';background:'+bg+';padding:2px 6px;border-radius:20px;">'+seta+Math.abs(diff)+'%</span>':'<span style="font-size:10px;color:#aaa;">novo</span>')
+      +'</div>';
+  }).join('');
 
   var html='<div style="margin-top:12px;padding:14px;background:#fff;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06);">';
-  // Seletores
+  // Seletores com mês + ano
   html+='<div style="display:grid;grid-template-columns:1fr auto 1fr;gap:6px;align-items:center;margin-bottom:12px;">';
-  // Esquerda — mês base
+  // Lado esquerdo (base)
   html+='<div style="display:flex;gap:3px;">';
-  html+='<select onchange="mesComparativo=this.value;renderGraficoComparativo()" style="flex:1;padding:5px 4px;border-radius:8px;border:1px solid #f0f0f0;font-size:10px;color:#6D28D9;">'+opsMes(mesComparativo)+'</select>';
-  html+='<select onchange="anoComparativo=parseInt(this.value);renderGraficoComparativo()" style="padding:5px 4px;border-radius:8px;border:1px solid #f0f0f0;font-size:10px;color:#6D28D9;width:52px;">'+opsAno(anoComparativo)+'</select>';
+  html+='<select onchange="mesComparativo=this.value;renderDFPainel()" style="flex:1;padding:5px 4px;border-radius:8px;border:1px solid #f0f0f0;font-size:10px;font-family:Sora,sans-serif;color:#6D28D9;">'+opsMes(mesComparativo)+'</select>';
+  html+='<select onchange="anoComparativo=parseInt(this.value);renderDFPainel()" style="padding:5px 4px;border-radius:8px;border:1px solid #f0f0f0;font-size:10px;font-family:Sora,sans-serif;color:#6D28D9;width:52px;">'+opsAno(anoComparativo)+'</select>';
   html+='</div>';
-  html+='<span style="font-size:11px;color:#aaa;font-weight:700;">vs</span>';
-  // Direita — mês comparado
+  html+='<span style="font-size:11px;color:#aaa;font-weight:700;text-align:center;">vs</span>';
+  // Lado direito (comparado)
   html+='<div style="display:flex;gap:3px;">';
-  html+='<select onchange="mesAtualComp=this.value;renderGraficoComparativo()" style="flex:1;padding:5px 4px;border-radius:8px;border:1px solid '+e.primary+'33;font-size:10px;color:'+e.primary+';">'+opsMes(mesAtualComp)+'</select>';
-  html+='<select onchange="anoAtualComp=parseInt(this.value);renderGraficoComparativo()" style="padding:5px 4px;border-radius:8px;border:1px solid '+e.primary+'33;font-size:10px;color:'+e.primary+';width:52px;">'+opsAno(anoAtualComp)+'</select>';
-  html+='</div></div>';
+  html+='<select onchange="var s=document.getElementById(\"df-mes-select\");if(s){s.value=this.value;}anoAtualComp=anoAtualComp||'+new Date().getFullYear()+';renderDFPainel()" style="flex:1;padding:5px 4px;border-radius:8px;border:1px solid '+e.primary+'33;font-size:10px;font-family:Sora,sans-serif;color:'+e.primary+';">'+opsMes(mesAtual)+'</select>';
+  html+='<select onchange="anoAtualComp=parseInt(this.value);renderDFPainel()" style="padding:5px 4px;border-radius:8px;border:1px solid '+e.primary+'33;font-size:10px;font-family:Sora,sans-serif;color:'+e.primary+';width:52px;">'+opsAno(anoAtualComp)+'</select>';
+  html+='</div>';
+  html+='</div>';
   // Totais
   html+='<div style="display:grid;grid-template-columns:1fr 1px 1fr;gap:10px;align-items:center;margin-bottom:10px;">';
   html+='<div style="text-align:center;">';
@@ -3373,12 +3365,12 @@ function renderGraficoComparativo(){
   html+='</div>';
   html+='<div style="background:#f0f0f0;height:36px;"></div>';
   html+='<div style="text-align:center;">';
-  html+='<div style="font-size:9px;color:'+e.primary+';font-weight:700;letter-spacing:1px;margin-bottom:3px;">'+mesAtualComp.toUpperCase()+' '+anoAtualComp+'</div>';
+  html+='<div style="font-size:9px;color:'+e.primary+';font-weight:700;letter-spacing:1px;margin-bottom:3px;">'+mesAtual.toUpperCase()+' '+anoAtualComp+'</div>';
   html+='<div style="font-family:Space Grotesk,sans-serif;font-size:20px;font-weight:900;color:'+e.primary+';">'+fmtReal(totalAtual)+'</div>';
-  if(totalComp>0)html+='<div style="font-size:12px;font-weight:800;color:'+corDiff+';margin-top:2px;">'+setaTotal+' '+Math.abs(diffTotal)+'%</div>';
+  if(totalComp>0) html+='<div style="font-size:12px;font-weight:800;color:'+corDiff+';margin-top:2px;">'+setaTotal+' '+Math.abs(diffTotal)+'%</div>';
   html+='</div></div>';
   // Botão expand
-  html+='<div onclick="var l=document.getElementById(\"comp-lista\");var arr=document.getElementById(\"comp-arr\");l.style.display=l.style.display===\"none\"?\"block\":\"none\";arr.textContent=l.style.display===\"none\"?\"▼\":\"▲\";" style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:#f5f5f5;border-radius:10px;cursor:pointer;">';
+  html+='<div onclick="var l=document.getElementById(\"comp-lista\");var arr=document.getElementById(\"comp-arr\");if(l.style.display===\"none\"){l.style.display=\"block\";arr.textContent=\"▲\";}else{l.style.display=\"none\";arr.textContent=\"▼\";}" style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:#f5f5f5;border-radius:10px;cursor:pointer;">';
   html+='<span style="font-size:11px;font-weight:700;color:#1A0A2E;">Ver por cartão ('+dados.length+')</span>';
   html+='<span id="comp-arr" style="font-size:10px;color:#aaa;">▼</span></div>';
   html+='<div id="comp-lista" style="display:none;margin-top:8px;">'+listaHTML+'</div>';
