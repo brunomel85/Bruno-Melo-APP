@@ -5447,10 +5447,42 @@ document.getElementById('df-comp-data').value=todayStr();
 document.getElementById('cond-data').value=todayStr();
 aplicarTema(0);
 renderTipoBtns();
+function recuperarCartoesDasCompras(){
+  var cartoes=ls('df_cartoes',[]);
+  if(cartoes&&cartoes.length>0) return;
+  var compras=ls('df_compras',[]);
+  if(!compras||compras.length===0) return;
+  var mapa={};
+  compras.forEach(function(p){
+    if(!p.cartaoId) return;
+    var id=p.cartaoId;
+    if(!mapa[id]){
+      mapa[id]={
+        id:id,
+        nome:p.cartaoNome||('Cartão '+id),
+        cor:p.cartaoCor||'#6B7280',
+        banco:p.cartaoBanco||'',
+        venc:p.cartaoVenc||0,
+        limite:0
+      };
+    }
+    // Atualizar nome se tiver cartaoNome salvo
+    if(p.cartaoNome) mapa[id].nome=p.cartaoNome;
+    if(p.cartaoCor) mapa[id].cor=p.cartaoCor;
+    if(p.cartaoVenc) mapa[id].venc=p.cartaoVenc;
+  });
+  var recuperados=Object.values(mapa);
+  if(recuperados.length>0){
+    lsSet('df_cartoes',recuperados);
+    console.log('Cartões recuperados:',recuperados.length,recuperados.map(function(c){return c.nome;}));
+  }
+}
+
 renderNavTabs('painel');
 renderPainel();
 initGraficoEvents();
 migrarRegistros();
+recuperarCartoesDasCompras();
 </script>
 </body>
 </html>
