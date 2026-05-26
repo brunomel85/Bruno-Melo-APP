@@ -3746,7 +3746,11 @@ function salvarCompra(){
     const mesLabel = anoParc !== anoAtualBase ? `${mesNome.slice(0,3)}/${String(anoParc).slice(2)}` : mesNome;
     parcelas.push({mes:mesNome, ano:anoParc, mesLabel, valor:valorParc, num:i+1});
   }
-  const compra={id:editandoCompraId||Date.now(),desc,valor,nParcelas,cartaoId,pagamento:compPagAtual,dataCompra,parcelas,categoria:catCompraAtual};
+  const cartaoNomeSalvo=cartaoSel?cartaoSel.nome:'';
+  const cartaoCorSalvo=cartaoSel?cartaoSel.cor:'';
+  const cartaoBancoSalvo=cartaoSel?cartaoSel.banco:'';
+  const cartaoVencSalvo=cartaoSel?cartaoSel.venc:'';
+  const compra={id:editandoCompraId||Date.now(),desc,valor,nParcelas,cartaoId,cartaoNome:cartaoNomeSalvo,cartaoCor:cartaoCorSalvo,cartaoBanco:cartaoBancoSalvo,cartaoVenc:cartaoVencSalvo,pagamento:compPagAtual,dataCompra,parcelas,categoria:catCompraAtual};
   let compras=getCompras();
   if(editandoCompraId){
     // Substitui a compra existente
