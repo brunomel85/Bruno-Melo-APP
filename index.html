@@ -3453,7 +3453,7 @@ function renderCartoes(){
   const mesParaFiltroGlobal = mesFiltroCartoes;
   const anoParaFiltroGlobal = new Date().getFullYear() + (MESES.indexOf(mesParaFiltroGlobal) < MESES.indexOf(mesAtual) ? 1 : 0);
   if(cartoes.length===0){
-    document.getElementById('lista-df-cartoes').innerHTML='<div class="empty">Nenhum cartão cadastrado ainda.</div>';return;
+    document.getElementById('lista-df-cartoes').innerHTML='<div class="empty">Nenhum cartão cadastrado ainda.</div><div style="text-align:center;margin-top:16px"><button onclick="forcarRecuperacaoCartoes()" style="padding:12px 20px;border-radius:12px;border:none;background:#1A1A2E;color:#fff;font-size:14px;font-weight:700;cursor:pointer">🔄 Recuperar Cartões das Compras</button></div>';return;
   }
   // M22 — Total do mês com donut clicável
   const totalMesGeral = cartoes.reduce((a,c)=>{
@@ -5466,7 +5466,6 @@ function recuperarCartoesDasCompras(){
         limite:0
       };
     }
-    // Atualizar nome se tiver cartaoNome salvo
     if(p.cartaoNome) mapa[id].nome=p.cartaoNome;
     if(p.cartaoCor) mapa[id].cor=p.cartaoCor;
     if(p.cartaoVenc) mapa[id].venc=p.cartaoVenc;
@@ -5475,6 +5474,36 @@ function recuperarCartoesDasCompras(){
   if(recuperados.length>0){
     lsSet('df_cartoes',recuperados);
     console.log('Cartões recuperados:',recuperados.length,recuperados.map(function(c){return c.nome;}));
+  }
+}
+function forcarRecuperacaoCartoes(){
+  var compras=ls('df_compras',[]);
+  if(!compras||compras.length===0){ alert('Nenhuma compra encontrada para recuperar cartões.'); return; }
+  var mapa={};
+  compras.forEach(function(p){
+    if(!p.cartaoId) return;
+    var id=p.cartaoId;
+    if(!mapa[id]){
+      mapa[id]={
+        id:id,
+        nome:p.cartaoNome||('Cartão '+id),
+        cor:p.cartaoCor||'#6B7280',
+        banco:p.cartaoBanco||'',
+        venc:p.cartaoVenc||0,
+        limite:0
+      };
+    }
+    if(p.cartaoNome) mapa[id].nome=p.cartaoNome;
+    if(p.cartaoCor) mapa[id].cor=p.cartaoCor;
+    if(p.cartaoVenc) mapa[id].venc=p.cartaoVenc;
+  });
+  var recuperados=Object.values(mapa);
+  if(recuperados.length>0){
+    lsSet('df_cartoes',recuperados);
+    alert('✅ ' + recuperados.length + ' cartão(ões) recuperado(s):\n' + recuperados.map(function(c){return '• '+c.nome;}).join('\n') + '\n\nO app vai recarregar.');
+    location.reload();
+  } else {
+    alert('⚠️ Nenhum cartão encontrado nas compras. As compras podem não ter o cartão vinculado.');
   }
 }
 
