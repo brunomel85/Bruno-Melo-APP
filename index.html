@@ -3612,7 +3612,7 @@ function renderCartoes(){
           <div style="font-weight:800;font-size:15px">${c.nome}</div>
           <div style="font-size:12px;opacity:0.55">Vence dia ${c.venc||'—'} · Limite ${c.limite?fmtReal(c.limite):'—'}</div>
           ${(()=>{
-            if(!c.venc||gasto<=0) return '';
+            if(!c.venc||gastoMes<=0) return '';
             const hoje3=new Date();
             const dia3=parseInt(c.venc);
             let prox=new Date(hoje3.getFullYear(),hoje3.getMonth(),dia3);
