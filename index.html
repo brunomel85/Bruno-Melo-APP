@@ -617,6 +617,7 @@
     </div>
     <div id="painel-stats" style="margin-bottom:12px"></div>
     <div id="painel-tipos" style="margin-bottom:12px"></div>
+    <div id="painel-responsaveis" style="background:#fff;border-radius:16px;padding:16px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,0.06);"></div>
     <div class="card">
       <div class="section-header">
         <span class="section-title">Últimos Registros</span>
@@ -1840,16 +1841,7 @@ function renderPainel(){
   }
 
   // Top clientes frequentes (só OPAY)
-  var elRespExist=document.getElementById('painel-responsaveis');
   if(empresaAtual===1){
-    // Criar div se não existir
-    if(!elRespExist){
-      elRespExist=document.createElement('div');
-      elRespExist.id='painel-responsaveis';
-      elRespExist.style.cssText='background:#fff;border-radius:16px;padding:16px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,0.06);';
-      var elRecentes=document.getElementById('painel-recentes');
-      if(elRecentes&&elRecentes.parentNode) elRecentes.parentNode.insertBefore(elRespExist,elRecentes);
-    }
     const todasDems2=getDemandas(empresaAtual)||[];
     const clientesMap={};
     todasDems2.forEach(function(d){
@@ -1858,10 +1850,9 @@ function renderPainel(){
       clientesMap[t].push(d);
     });
     const clientesArr=Object.keys(clientesMap).map(function(t){return{nome:t,total:clientesMap[t].length,dems:clientesMap[t]};}).sort(function(a,b){return b.total-a.total;});
-    if(clientesArr.length>0) renderClientesBlock(elRespExist,clientesArr,0);
-  } else {
-    // Remover completamente se existir e não for OPAY
-    if(elRespExist) elRespExist.parentNode.removeChild(elRespExist);
+    const elResp=document.getElementById('painel-responsaveis');
+    if(elResp&&clientesArr.length>0){elResp.style.display='block';renderClientesBlock(elResp,clientesArr,0);}
+    else if(elResp){elResp.innerHTML='';elResp.style.display='none';}
   }
 
   const recentes=[...registros].sort((a,b)=>b.id-a.id).slice(0,5);
@@ -2971,9 +2962,6 @@ let filtroResponsavelDem='';
 let fixasExpandNP=false;
 let fixasExpandP=false;
 let mesComparativo='';
-let mesAtualComp='';
-let anoComparativo=new Date().getFullYear();
-let anoAtualComp=new Date().getFullYear();
 let painelTipoAberto=null;
 function toggleCartao(id){ cartaoAberto=cartaoAberto===id?null:id; renderCartoes(); }
 function verificarRotaConcluida(sel, data, paradas){
@@ -3283,104 +3271,75 @@ function renderGraficoComparativo(){
   var e=EMPRESAS[empresaAtual];
   var el=document.getElementById('df-grafico-comp');
   if(!el) return;
-
-  // Inicializar valores padrão
-  var hoje=new Date();
-  if(!mesAtualComp) mesAtualComp=MESES[hoje.getMonth()];
-  if(!mesComparativo) mesComparativo=MESES[(MESES.indexOf(mesAtualComp)-1+12)%12];
-  if(!anoAtualComp) anoAtualComp=hoje.getFullYear();
-  if(!anoComparativo) anoComparativo=hoje.getFullYear();
-
+  var mesSel2=document.getElementById('df-mes-select');
+  var mesAtual=(mesSel2&&mesSel2.value&&mesSel2.value!=='Todos')?mesSel2.value:MESES[new Date().getMonth()];
+  if(!mesComparativo){
+    var idxAtual=MESES.indexOf(mesAtual);
+    mesComparativo=MESES[(idxAtual-1+12)%12];
+  }
   var cartoes=getCartoes();
   var compras=getCompras();
   if(cartoes.length===0){el.innerHTML='';return;}
 
-  // Anos disponíveis
-  var anosSet={};
-  anosSet[hoje.getFullYear()]=1;
-  anosSet[hoje.getFullYear()+1]=1;
-  compras.forEach(function(p){
-    p.parcelas.forEach(function(x){if(x.ano)anosSet[x.ano]=1;});
-  });
-  var anos=Object.keys(anosSet).map(Number).sort();
-
-  // Calcular gasto por cartão/mês/ano
-  function gastoMesAno(cartaoId,mes,ano){
+  function gastoMes(cartaoId,mes){
     return compras.filter(function(p){return p.cartaoId===cartaoId;}).reduce(function(tot,p){
-      return tot+p.parcelas.filter(function(x){
-        // Se tem ano salvo, usar diretamente
-        if(x.ano) return x.mes===mes && x.ano===ano;
-        // Sem ano: assumir que pertence ao ano da compra ou ao corrente
-        var anoRef=hoje.getFullYear();
-        if(p.dataCompra){
-          try{ anoRef=new Date(p.dataCompra+'T12:00:00').getFullYear(); }catch(e){}
-        }
-        return x.mes===mes && anoRef===ano;
-      }).reduce(function(b,x){return b+(x.valor||0);},0);
+      return tot+p.parcelas.filter(function(x){return x.mes===mes;}).reduce(function(b,x){return b+x.valor;},0);
     },0);
   }
 
   var dados=cartoes.map(function(c){
-    return{nome:c.nome,cor:c.cor,
-      atual:gastoMesAno(c.id,mesAtualComp,anoAtualComp),
-      comp:gastoMesAno(c.id,mesComparativo,anoComparativo)
-    };
+    return{nome:c.nome,cor:c.cor,atual:gastoMes(c.id,mesAtual),comp:gastoMes(c.id,mesComparativo)};
   }).filter(function(d){return d.atual>0||d.comp>0;});
 
   var totalAtual=dados.reduce(function(a,d){return a+d.atual;},0);
   var totalComp=dados.reduce(function(a,d){return a+d.comp;},0);
   var diffTotal=totalComp>0?Math.round((totalAtual-totalComp)/totalComp*100):0;
-  var corDiff=diffTotal>=0?'#EF4444':'#10B981';
-  var setaTotal=diffTotal>=0?'↑':'↓';
+  var corDiff=diffTotal>0?'#EF4444':'#10B981';
+  var bgDiff=diffTotal>0?'#FEE2E2':'#D1FAE5';
+  var setaTotal=diffTotal>0?'↑':'↓';
 
-  function opsMes(sel){return MESES.map(function(m){return '<option value="'+m+'"'+(m===sel?' selected':'')+'>'+m+'</option>';}).join('');}
-  function opsAno(sel){return anos.map(function(a){return '<option value="'+a+'"'+(a===sel?' selected':'')+'>'+a+'</option>';}).join('');}
+  // Seletores
+  var opcoesBase=MESES.map(function(m){return '<option value="'+m+'"'+(m===mesComparativo?' selected':'')+'>'+m+'</option>';}).join('');
+  var opcoesComp=MESES.map(function(m){return '<option value="'+m+'"'+(m===mesAtual?' selected':'')+'>'+m+'</option>';}).join('');
 
-  var listaHTML=dados.length===0
-    ?'<div style="text-align:center;color:#aaa;font-size:12px;padding:12px;">Sem dados para comparar</div>'
-    :dados.map(function(d){
-      var diff=d.comp>0?Math.round((d.atual-d.comp)/d.comp*100):null;
-      var cor=diff!==null?(diff>=0?'#EF4444':'#10B981'):'#aaa';
-      var bg=diff!==null?(diff>=0?'#FEE2E2':'#D1FAE5'):'#f5f5f5';
-      var seta=diff!==null?(diff>=0?'↑':'↓'):'';
-      return '<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #f5f5f5;">'
-        +'<div style="width:8px;height:8px;border-radius:50%;background:'+d.cor+';flex-shrink:0;"></div>'
-        +'<div style="flex:1;font-size:12px;font-weight:700;color:#1A0A2E;">'+d.nome+'</div>'
-        +'<div style="font-size:11px;font-weight:800;color:#1A0A2E;">'+fmtReal(d.atual)+'</div>'
-        +(diff!==null?'<span style="font-size:10px;font-weight:800;color:'+cor+';background:'+bg+';padding:2px 6px;border-radius:20px;">'+seta+Math.abs(diff)+'%</span>':'<span style="font-size:10px;color:#aaa;">novo</span>')
-        +'</div>';
-    }).join('');
+  // Lista cartões
+  var listaHTML=dados.map(function(d){
+    var diff=d.comp>0?Math.round((d.atual-d.comp)/d.comp*100):0;
+    var cor=diff>0?'#EF4444':'#10B981';
+    var bg=diff>0?'#FEE2E2':'#D1FAE5';
+    var seta=diff>0?'↑':'↓';
+    return '<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #f5f5f5;">'
+      +'<div style="width:8px;height:8px;border-radius:50%;background:'+d.cor+';flex-shrink:0;"></div>'
+      +'<div style="flex:1;font-size:12px;font-weight:700;color:#1A0A2E;">'+d.nome+'</div>'
+      +'<div style="font-size:11px;font-weight:800;color:#1A0A2E;">'+fmtReal(d.atual)+'</div>'
+      +(d.comp>0?'<span style="font-size:10px;font-weight:800;color:'+cor+';background:'+bg+';padding:2px 6px;border-radius:20px;">'+seta+Math.abs(diff)+'%</span>':'')
+      +'</div>';
+  }).join('');
 
   var html='<div style="margin-top:12px;padding:14px;background:#fff;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06);">';
   // Seletores
-  html+='<div style="display:grid;grid-template-columns:1fr auto 1fr;gap:6px;align-items:center;margin-bottom:12px;">';
-  // Esquerda — mês base
-  html+='<div style="display:flex;gap:3px;">';
-  html+='<select onchange="mesComparativo=this.value;renderGraficoComparativo()" style="flex:1;padding:5px 4px;border-radius:8px;border:1px solid #f0f0f0;font-size:10px;color:#6D28D9;">'+opsMes(mesComparativo)+'</select>';
-  html+='<select onchange="anoComparativo=parseInt(this.value);renderGraficoComparativo()" style="padding:5px 4px;border-radius:8px;border:1px solid #f0f0f0;font-size:10px;color:#6D28D9;width:52px;">'+opsAno(anoComparativo)+'</select>';
-  html+='</div>';
+  html+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:12px;">';
+  html+='<select onchange="mesComparativo=this.value;renderDFPainel()" style="flex:1;padding:6px 8px;border-radius:8px;border:1px solid #f0f0f0;font-size:11px;font-family:Sora,sans-serif;color:#1A0A2E;">'+opcoesBase+'</select>';
   html+='<span style="font-size:11px;color:#aaa;font-weight:700;">vs</span>';
-  // Direita — mês comparado
-  html+='<div style="display:flex;gap:3px;">';
-  html+='<select onchange="mesAtualComp=this.value;renderGraficoComparativo()" style="flex:1;padding:5px 4px;border-radius:8px;border:1px solid '+e.primary+'33;font-size:10px;color:'+e.primary+';">'+opsMes(mesAtualComp)+'</select>';
-  html+='<select onchange="anoAtualComp=parseInt(this.value);renderGraficoComparativo()" style="padding:5px 4px;border-radius:8px;border:1px solid '+e.primary+'33;font-size:10px;color:'+e.primary+';width:52px;">'+opsAno(anoAtualComp)+'</select>';
-  html+='</div></div>';
+  html+='<select onchange="var sel=document.getElementById(\"df-mes-select\");if(sel)sel.value=this.value;renderDFPainel()" style="flex:1;padding:6px 8px;border-radius:8px;border:1px solid #f0f0f0;font-size:11px;font-family:Sora,sans-serif;color:#1A0A2E;">'+opcoesComp+'</select>';
+  html+='</div>';
   // Totais
   html+='<div style="display:grid;grid-template-columns:1fr 1px 1fr;gap:10px;align-items:center;margin-bottom:10px;">';
   html+='<div style="text-align:center;">';
-  html+='<div style="font-size:9px;color:#6D28D9;font-weight:700;letter-spacing:1px;margin-bottom:3px;">'+mesComparativo.toUpperCase()+' '+anoComparativo+'</div>';
+  html+='<div style="font-size:9px;color:#aaa;font-weight:700;letter-spacing:1px;margin-bottom:3px;">'+mesComparativo.toUpperCase()+'</div>';
   html+='<div style="font-family:Space Grotesk,sans-serif;font-size:20px;font-weight:900;color:#6D28D9;">'+fmtReal(totalComp)+'</div>';
   html+='</div>';
   html+='<div style="background:#f0f0f0;height:36px;"></div>';
   html+='<div style="text-align:center;">';
-  html+='<div style="font-size:9px;color:'+e.primary+';font-weight:700;letter-spacing:1px;margin-bottom:3px;">'+mesAtualComp.toUpperCase()+' '+anoAtualComp+'</div>';
+  html+='<div style="font-size:9px;color:#aaa;font-weight:700;letter-spacing:1px;margin-bottom:3px;">'+mesAtual.toUpperCase()+'</div>';
   html+='<div style="font-family:Space Grotesk,sans-serif;font-size:20px;font-weight:900;color:'+e.primary+';">'+fmtReal(totalAtual)+'</div>';
-  if(totalComp>0)html+='<div style="font-size:12px;font-weight:800;color:'+corDiff+';margin-top:2px;">'+setaTotal+' '+Math.abs(diffTotal)+'%</div>';
+  if(totalComp>0) html+='<div style="font-size:11px;font-weight:800;color:'+corDiff+';margin-top:2px;">'+setaTotal+' '+Math.abs(diffTotal)+'%</div>';
   html+='</div></div>';
-  // Botão expand
-  html+='<div onclick="var l=document.getElementById(\"comp-lista\");var arr=document.getElementById(\"comp-arr\");l.style.display=l.style.display===\"none\"?\"block\":\"none\";arr.textContent=l.style.display===\"none\"?\"▼\":\"▲\";" style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:#f5f5f5;border-radius:10px;cursor:pointer;">';
+  // Botão expand cartões
+  html+='<div onclick="var l=document.getElementById(\"comp-lista\");var arr=document.getElementById(\"comp-arr\");if(l.style.display===\"none\"){l.style.display=\"block\";arr.textContent=\"▲\";}else{l.style.display=\"none\";arr.textContent=\"▼\";}" style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:#f5f5f5;border-radius:10px;cursor:pointer;">';
   html+='<span style="font-size:11px;font-weight:700;color:#1A0A2E;">Ver por cartão ('+dados.length+')</span>';
-  html+='<span id="comp-arr" style="font-size:10px;color:#aaa;">▼</span></div>';
+  html+='<span id="comp-arr" style="font-size:10px;color:#aaa;">▼</span>';
+  html+='</div>';
   html+='<div id="comp-lista" style="display:none;margin-top:8px;">'+listaHTML+'</div>';
   html+='</div>';
   el.innerHTML=html;
@@ -3746,11 +3705,7 @@ function salvarCompra(){
     const mesLabel = anoParc !== anoAtualBase ? `${mesNome.slice(0,3)}/${String(anoParc).slice(2)}` : mesNome;
     parcelas.push({mes:mesNome, ano:anoParc, mesLabel, valor:valorParc, num:i+1});
   }
-  const cartaoNomeSalvo=cartaoSel?cartaoSel.nome:'';
-  const cartaoCorSalvo=cartaoSel?cartaoSel.cor:'';
-  const cartaoBancoSalvo=cartaoSel?cartaoSel.banco:'';
-  const cartaoVencSalvo=cartaoSel?cartaoSel.venc:'';
-  const compra={id:editandoCompraId||Date.now(),desc,valor,nParcelas,cartaoId,cartaoNome:cartaoNomeSalvo,cartaoCor:cartaoCorSalvo,cartaoBanco:cartaoBancoSalvo,cartaoVenc:cartaoVencSalvo,pagamento:compPagAtual,dataCompra,parcelas,categoria:catCompraAtual};
+  const compra={id:editandoCompraId||Date.now(),desc,valor,nParcelas,cartaoId,pagamento:compPagAtual,dataCompra,parcelas,categoria:catCompraAtual};
   let compras=getCompras();
   if(editandoCompraId){
     // Substitui a compra existente
@@ -5447,42 +5402,10 @@ document.getElementById('df-comp-data').value=todayStr();
 document.getElementById('cond-data').value=todayStr();
 aplicarTema(0);
 renderTipoBtns();
-function recuperarCartoesDasCompras(){
-  var cartoes=ls('df_cartoes',[]);
-  if(cartoes&&cartoes.length>0) return;
-  var compras=ls('df_compras',[]);
-  if(!compras||compras.length===0) return;
-  var mapa={};
-  compras.forEach(function(p){
-    if(!p.cartaoId) return;
-    var id=p.cartaoId;
-    if(!mapa[id]){
-      mapa[id]={
-        id:id,
-        nome:p.cartaoNome||('Cartão '+id),
-        cor:p.cartaoCor||'#6B7280',
-        banco:p.cartaoBanco||'',
-        venc:p.cartaoVenc||0,
-        limite:0
-      };
-    }
-    // Atualizar nome se tiver cartaoNome salvo
-    if(p.cartaoNome) mapa[id].nome=p.cartaoNome;
-    if(p.cartaoCor) mapa[id].cor=p.cartaoCor;
-    if(p.cartaoVenc) mapa[id].venc=p.cartaoVenc;
-  });
-  var recuperados=Object.values(mapa);
-  if(recuperados.length>0){
-    lsSet('df_cartoes',recuperados);
-    console.log('Cartões recuperados:',recuperados.length,recuperados.map(function(c){return c.nome;}));
-  }
-}
-
 renderNavTabs('painel');
 renderPainel();
 initGraficoEvents();
 migrarRegistros();
-recuperarCartoesDasCompras();
 </script>
 </body>
 </html>
