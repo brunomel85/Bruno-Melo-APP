@@ -3520,7 +3520,7 @@ function renderCartoes(){
       </div>`;
   } else if(totalEl) { totalEl.innerHTML=''; }
 
-  document.getElementById('lista-df-cartoes').innerHTML=cartoes.map(c=>{
+  try { document.getElementById('lista-df-cartoes').innerHTML=cartoes.map(c=>{
     // Gasto do mês filtrado
     const mesParaFiltro = mesFiltroCartoes;
     const anoParaFiltro = new Date().getFullYear() + (MESES.indexOf(mesParaFiltro) < MESES.indexOf(mesAtual) ? 1 : 0);
@@ -3675,7 +3675,7 @@ function renderCartoes(){
         ${openCard&&comprasMes.length>0?`<div style="display:inline-flex;align-items:center;gap:6px;background:${c.cor}15;border-radius:8px;padding:5px 10px"><span style="font-size:11px;color:${c.cor};font-weight:600">Total ${mesFiltroCartao}</span><span style="font-size:15px;font-weight:800;color:${c.cor}">${fmtReal(comprasMes.reduce((a,p)=>{const parc=p.parcelas.find(x=>x.mes===mesFiltroCartao&&(!x.ano||x.ano===new Date().getFullYear()||x.ano===new Date().getFullYear()+1));const pago=parc&&(p.parcelasPagas||[]).includes(parc.num);return a+(pago?0:(parc?parc.valor:0));},0))}</span></div>`:''}
       </div>
     </div>`;
-  }).join('');
+  }).join(''); } catch(e){ document.getElementById('lista-df-cartoes').innerHTML='<div style="background:#FEE2E2;padding:16px;border-radius:12px;color:#EF4444;font-weight:700">⚠️ Erro ao renderizar cartões:<br>'+e.message+'</div>'; console.error('renderCartoes erro:',e); }
 }
 
 // COMPRAS
